@@ -6,59 +6,62 @@
 
 #include "termkey.h"
 
-static void on_key(TermKey *tk, TermKeyKey *key)
+static void
+on_key (termkey_t *tk, termkey_key_t *key)
 {
-  char buffer[50];
-  termkey_strfkey(tk, buffer, sizeof buffer, key, TERMKEY_FORMAT_VIM);
-  printf("%s\n", buffer);
+	char buffer[50];
+	termkey_strfkey (tk, buffer, sizeof buffer, key, TERMKEY_FORMAT_VIM);
+	printf ("%s\n", buffer);
 }
 
-int main(int argc, char *argv[])
+int
+main (int argc, char *argv[])
 {
-  TERMKEY_CHECK_VERSION;
+	TERMKEY_CHECK_VERSION;
 
-  TermKey *tk = termkey_new(0, 0);
+	termkey_t *tk = termkey_new (0, 0);
 
-  if(!tk) {
-    fprintf(stderr, "Cannot allocate termkey instance\n");
-    exit(1);
-  }
+	if (!tk)
+	{
+		fprintf (stderr, "Cannot allocate termkey instance\n");
+		exit (1);
+	}
 
-  struct pollfd fd;
+	struct pollfd fd;
+	fd.fd = 0; /* the file descriptor we passed to termkey_new() */
+	fd.events = POLLIN;
 
-  fd.fd = 0; /* the file descriptor we passed to termkey_new() */
-  fd.events = POLLIN;
+	termkey_result_t ret;
+	termkey_key_t key;
 
-  TermKeyResult ret;
-  TermKeyKey key;
+	int running = 1;
+	int nextwait = -1;
 
-  int running = 1;
-  int nextwait = -1;
+	while (running)
+	{
+		if (poll (&fd, 1, nextwait) == 0)
+			// Timed out
+			if (termkey_getkey_force (tk, &key) == TERMKEY_RES_KEY)
+				on_key (tk, &key);
 
-  while(running) {
-    if(poll(&fd, 1, nextwait) == 0) {
-      // Timed out
-      if(termkey_getkey_force(tk, &key) == TERMKEY_RES_KEY)
-        on_key(tk, &key);
-    }
+		if (fd.revents & (POLLIN | POLLHUP | POLLERR))
+			termkey_advisereadable (tk);
 
-    if(fd.revents & (POLLIN|POLLHUP|POLLERR))
-      termkey_advisereadable(tk);
+		while ((ret = termkey_getkey (tk, &key)) == TERMKEY_RES_KEY)
+		{
+			on_key (tk, &key);
 
-    while((ret = termkey_getkey(tk, &key)) == TERMKEY_RES_KEY) {
-      on_key(tk, &key);
+			if (key.type == TERMKEY_TYPE_UNICODE
+			 && key.modifiers & TERMKEY_KEYMOD_CTRL
+			 && (key.code.codepoint == 'C' || key.code.codepoint == 'c'))
+				running = 0;
+		}
 
-      if(key.type == TERMKEY_TYPE_UNICODE &&
-         key.modifiers & TERMKEY_KEYMOD_CTRL &&
-         (key.code.codepoint == 'C' || key.code.codepoint == 'c'))
-        running = 0;
-    }
+		if (ret == TERMKEY_RES_AGAIN)
+			nextwait = termkey_get_waittime (tk);
+		else
+			nextwait = -1;
+	}
 
-    if(ret == TERMKEY_RES_AGAIN)
-      nextwait = termkey_get_waittime(tk);
-    else
-      nextwait = -1;
-  }
-
-  termkey_destroy(tk);
+	termkey_destroy (tk);
 }

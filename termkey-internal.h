@@ -1,94 +1,112 @@
-#ifndef GUARD_TERMKEY_INTERNAL_H_
-#define GUARD_TERMKEY_INTERNAL_H_
+#ifndef TERMKEY_INTERNAL_H
+#define TERMKEY_INTERNAL_H
 
 #include "termkey.h"
 
 #include <stdint.h>
 #include <termios.h>
 
-struct TermKeyDriver
+typedef struct termkey_driver termkey_driver_t;
+struct termkey_driver
 {
-  const char      *name;
-  void          *(*new_driver)(TermKey *tk, const char *term);
-  void           (*free_driver)(void *info);
-  int            (*start_driver)(TermKey *tk, void *info);
-  int            (*stop_driver)(TermKey *tk, void *info);
-  TermKeyResult (*peekkey)(TermKey *tk, void *info, TermKeyKey *key, int force, size_t *nbytes);
+	const char *name;
+	void *(*new_driver) (termkey_t *tk, const char *term);
+	void (*free_driver) (void *info);
+	int (*start_driver) (termkey_t *tk, void *info);
+	int (*stop_driver) (termkey_t *tk, void *info);
+	termkey_result_t (*peekkey) (termkey_t *tk,
+		void *info, termkey_key_t *key, int force, size_t *nbytes);
 };
 
-struct keyinfo {
-  TermKeyType type;
-  TermKeySym sym;
-  int modifier_mask;
-  int modifier_set;
-};
-
-struct TermKeyDriverNode;
-struct TermKeyDriverNode {
-  struct TermKeyDriver     *driver;
-  void                      *info;
-  struct TermKeyDriverNode *next;
-};
-
-struct TermKey {
-  int    fd;
-  int    flags;
-  int    canonflags;
-  unsigned char *buffer;
-  size_t buffstart; // First offset in buffer
-  size_t buffcount; // NUMBER of entires valid in buffer
-  size_t buffsize; // Total malloc'ed size
-  size_t hightide; /* Position beyond buffstart at which peekkey() should next start
-                    * normally 0, but see also termkey_interpret_csi */
-
-  struct termios restore_termios;
-  char restore_termios_valid;
-
-  int waittime; // msec
-
-  char   is_closed;
-  char   is_started;
-
-  int  nkeynames;
-  const char **keynames;
-
-  // There are 32 C0 codes
-  struct keyinfo c0[32];
-
-  struct TermKeyDriverNode *drivers;
-
-  // Now some "protected" methods for the driver to call but which we don't
-  // want exported as real symbols in the library
-  struct {
-    void (*emit_codepoint)(TermKey *tk, long codepoint, TermKeyKey *key);
-    TermKeyResult (*peekkey_simple)(TermKey *tk, TermKeyKey *key, int force, size_t *nbytes);
-    TermKeyResult (*peekkey_mouse)(TermKey *tk, TermKeyKey *key, size_t *nbytes);
-  } method;
-};
-
-static inline void termkey_key_get_linecol(const TermKeyKey *key, int *line, int *col)
+typedef struct keyinfo keyinfo_t;
+struct keyinfo
 {
-  if(col)
-    *col  = (unsigned char)key->code.mouse[1] | ((unsigned char)key->code.mouse[3] & 0x0f) << 8;
+	termkey_type_t type;
+	termkey_sym_t sym;
+	int modifier_mask;
+	int modifier_set;
+};
 
-  if(line)
-    *line = (unsigned char)key->code.mouse[2] | ((unsigned char)key->code.mouse[3] & 0x70) << 4;
+typedef struct termkey_driver_node termkey_driver_node_t;
+struct termkey_driver_node
+{
+	termkey_driver_t *driver;
+	void *info;
+	termkey_driver_node_t *next;
+};
+
+struct termkey
+{
+	int fd;
+	int flags;
+	int canonflags;
+	unsigned char *buffer;
+	size_t buffstart; // First offset in buffer
+	size_t buffcount; // NUMBER of entires valid in buffer
+	size_t buffsize; // Total malloc'ed size
+
+	// Position beyond buffstart at which peekkey() should next start
+	// normally 0, but see also termkey_interpret_csi().
+	size_t hightide;
+
+	struct termios restore_termios;
+	char restore_termios_valid;
+
+	int waittime; // msec
+
+	char is_closed;
+	char is_started;
+
+	int nkeynames;
+	const char **keynames;
+
+	// There are 32 C0 codes
+	keyinfo_t c0[32];
+
+	termkey_driver_node_t *drivers;
+
+	// Now some "protected" methods for the driver to call but which we don't
+	// want exported as real symbols in the library
+	struct
+	{
+		void (*emit_codepoint) (termkey_t *tk,
+			long codepoint, termkey_key_t *key);
+		termkey_result_t (*peekkey_simple) (termkey_t *tk,
+			termkey_key_t *key, int force, size_t *nbytes);
+		termkey_result_t (*peekkey_mouse) (termkey_t *tk,
+			termkey_key_t *key, size_t *nbytes);
+	}
+	method;
+};
+
+static inline void
+termkey_key_get_linecol (const termkey_key_t *key, int *line, int *col)
+{
+	if (col)
+		*col = (unsigned char) key->code.mouse[1]
+			| ((unsigned char) key->code.mouse[3] & 0x0f) << 8;
+
+	if (line)
+		*line = (unsigned char) key->code.mouse[2]
+			| ((unsigned char) key->code.mouse[3] & 0x70) << 4;
 }
 
-static inline void termkey_key_set_linecol(TermKeyKey *key, int line, int col)
+static inline void
+termkey_key_set_linecol (termkey_key_t *key, int line, int col)
 {
-  if(line > 0xfff)
-    line = 0xfff;
+	if (line > 0xfff)
+		line = 0xfff;
 
-  if(col > 0x7ff)
-    col = 0x7ff;
+	if (col > 0x7ff)
+		col = 0x7ff;
 
-  key->code.mouse[1] = (line & 0x0ff);
-  key->code.mouse[2] = (col & 0x0ff);
-  key->code.mouse[3] = (line & 0xf00) >> 8 | (col & 0x300) >> 4;
+	key->code.mouse[1] = (line & 0x0ff);
+	key->code.mouse[2] = (col & 0x0ff);
+	key->code.mouse[3] = (line & 0xf00) >> 8 | (col & 0x300) >> 4;
 }
 
-extern struct TermKeyDriver termkey_driver_csi;
-extern struct TermKeyDriver termkey_driver_ti;
+extern termkey_driver_t termkey_driver_csi;
+extern termkey_driver_t termkey_driver_ti;
 
-#endif
+#endif  // ! TERMKEY_INTERNAL_H
+
