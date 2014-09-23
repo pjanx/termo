@@ -443,7 +443,7 @@ peekkey (termkey_t *tk, void *info,
 	return TERMKEY_RES_NONE;
 }
 
-static struct
+static struct func
 {
 	const char *funcname;
 	termkey_type_t type;
@@ -501,36 +501,24 @@ funcs[] =
 };
 
 static int
+func_compare (const void *key, const void *element)
+{
+	return strcmp (key, ((struct func *) element)->funcname);
+}
+
+static int
 funcname2keysym (const char *funcname,
 	termkey_type_t *typep, termkey_sym_t *symp, int *modmaskp, int *modsetp)
 {
-	// Binary search
-
-	int start = 0;
-	int end = sizeof funcs / sizeof funcs[0];
-	// is "one past" the end of the range
-
-	// XXX: bsearch()?
-	while (1)
+	struct func *func = bsearch (funcname, funcs,
+		sizeof funcs / sizeof funcs[0], sizeof funcs[0], func_compare);
+	if (func)
 	{
-		int i = (start + end) / 2;
-		int cmp = strcmp (funcname, funcs[i].funcname);
-
-		if (cmp == 0)
-		{
-			*typep    = funcs[i].type;
-			*symp     = funcs[i].sym;
-			*modmaskp = funcs[i].mods;
-			*modsetp  = funcs[i].mods;
-			return 1;
-		}
-		else if (end == start + 1)
-			// That was our last choice and it wasn't it - not found
-			break;
-		else if (cmp > 0)
-			start = i;
-		else
-			end = i;
+		*typep    = func->type;
+		*symp     = func->sym;
+		*modmaskp = func->mods;
+		*modsetp  = func->mods;
+		return 1;
 	}
 
 	if (funcname[0] == 'f' && isdigit (funcname[1]))
