@@ -304,13 +304,9 @@ abort_free_ti:
 }
 
 static int
-start_driver (termkey_t *tk, void *info)
+write_string (termkey_t *tk, char *string)
 {
-	termkey_ti_t *ti = info;
-	char *start_string = ti->start_string;
-	size_t len;
-
-	if (tk->fd == -1 || !isatty (tk->fd) || !start_string)
+	if (tk->fd == -1 || !isatty (tk->fd) || !string)
 		return 1;
 
 	/* The terminfo database will contain keys in application cursor key mode.
@@ -318,44 +314,30 @@ start_driver (termkey_t *tk, void *info)
 	 */
 
 	// Can't call putp or tputs because they suck and don't give us fd control
-	len = strlen (start_string);
+	size_t len = strlen (string);
 	while (len)
 	{
-		ssize_t written = write (tk->fd, start_string, len);
+		ssize_t written = write (tk->fd, string, len);
 		if (written == -1)
 			return 0;
-		start_string += written;
+		string += written;
 		len -= written;
 	}
 	return 1;
 }
 
-// XXX: this is the same as above only with a different string
+static int
+start_driver (termkey_t *tk, void *info)
+{
+	termkey_ti_t *ti = info;
+	return write_string (tk, ti->start_string);
+}
+
 static int
 stop_driver (termkey_t *tk, void *info)
 {
 	termkey_ti_t *ti = info;
-	char *stop_string = ti->stop_string;
-	size_t len;
-
-	if (tk->fd == -1 || !isatty (tk->fd) || !stop_string)
-		return 1;
-
-	/* The terminfo database will contain keys in application cursor key mode.
-	 * We may need to enable that mode
-	 */
-
-	// Can't call putp or tputs because they suck and don't give us fd control
-	len = strlen (stop_string);
-	while (len)
-	{
-		ssize_t written = write (tk->fd, stop_string, len);
-		if (written == -1)
-			return 0;
-		stop_string += written;
-		len -= written;
-	}
-	return 1;
+	return write_string (tk, ti->stop_string);
 }
 
 static void
