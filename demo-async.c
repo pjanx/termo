@@ -17,6 +17,9 @@ on_key (termkey_t *tk, termkey_key_t *key)
 int
 main (int argc, char *argv[])
 {
+	(void) argc;
+	(void) argv;
+
 	TERMKEY_CHECK_VERSION;
 
 	termkey_t *tk = termkey_new (0, 0);

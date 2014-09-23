@@ -29,6 +29,8 @@ static termkey_result_t
 handle_csi_ss3_full (termkey_t *tk,
 	termkey_key_t *key, int cmd, long *arg, int args)
 {
+	(void) tk;
+
 	if (args > 1 && arg[1] != -1)
 		key->modifiers = arg[1] - 1;
 	else
@@ -90,11 +92,13 @@ register_ss3kpalt (termkey_type_t type, termkey_sym_t sym,
 
 /* This value must be increased if more CSI function keys are added */
 static struct keyinfo csifuncs[35];
-#define NCSIFUNCS (sizeof csifuncs / sizeof csifuncs[0])
+#define NCSIFUNCS ((long) (sizeof csifuncs / sizeof csifuncs[0]))
 
 static termkey_result_t
 handle_csifunc (termkey_t *tk, termkey_key_t *key, int cmd, long *arg, int args)
 {
+	(void) cmd;
+
 	if (args > 1 && arg[1] != -1)
 		key->modifiers = arg[1] - 1;
 	else
@@ -177,6 +181,8 @@ handle_csi_u (termkey_t *tk, termkey_key_t *key, int cmd, long *arg, int args)
 static termkey_result_t
 handle_csi_m (termkey_t *tk, termkey_key_t *key, int cmd, long *arg, int args)
 {
+	(void) tk;
+
 	int initial = cmd >> 8;
 	cmd &= 0xff;
 
@@ -224,6 +230,8 @@ termkey_result_t
 termkey_interpret_mouse (termkey_t *tk, const termkey_key_t *key,
 	termkey_mouse_event_t *event, int *button, int *line, int *col)
 {
+	(void) tk;
+
 	if (key->type != TERMKEY_TYPE_MOUSE)
 		return TERMKEY_RES_NONE;
 
@@ -298,6 +306,8 @@ termkey_result_t
 termkey_interpret_position (termkey_t *tk,
 	const termkey_key_t *key, int *line, int *col)
 {
+	(void) tk;
+
 	if (key->type != TERMKEY_TYPE_POSITION)
 		return TERMKEY_RES_NONE;
 
@@ -312,6 +322,8 @@ termkey_interpret_position (termkey_t *tk,
 static termkey_result_t
 handle_csi_y (termkey_t *tk, termkey_key_t *key, int cmd, long *arg, int args)
 {
+	(void) tk;
+
 	switch (cmd)
 	{
 	case 'y' | '$' << 16:
@@ -335,6 +347,8 @@ termkey_result_t
 termkey_interpret_modereport (termkey_t *tk,
 	const termkey_key_t *key, int *initial, int *mode, int *value)
 {
+	(void) tk;
+
 	if (key->type != TERMKEY_TYPE_MODEREPORT)
 		return TERMKEY_RES_NONE;
 
@@ -524,6 +538,8 @@ register_keys (void)
 static void *
 new_driver (termkey_t *tk, const char *term)
 {
+	(void) term;
+
 	if (!keyinfo_initialised && !register_keys ())
 		return NULL;
 
@@ -546,6 +562,8 @@ static termkey_result_t
 peekkey_csi (termkey_t *tk, termkey_csi_t *csi,
 	size_t introlen, termkey_key_t *key, int force, size_t *nbytep)
 {
+	(void) csi;
+
 	size_t csi_len;
 	size_t args = 16;
 	long arg[16];
@@ -621,6 +639,8 @@ static termkey_result_t
 peekkey_ss3 (termkey_t *tk, termkey_csi_t *csi, size_t introlen,
 	termkey_key_t *key, int force, size_t *nbytep)
 {
+	(void) csi;
+
 	if (tk->buffcount < introlen + 1)
 	{
 		if (!force)
