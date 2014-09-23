@@ -15,8 +15,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
 /* To be efficient at lookups, we store the byte sequence => keyinfo mapping
  * in a trie. This avoids a slow linear search through a flat list of
@@ -309,24 +307,15 @@ static int
 start_driver (termkey_t *tk, void *info)
 {
 	termkey_ti_t *ti = info;
-	struct stat statbuf;
 	char *start_string = ti->start_string;
 	size_t len;
 
-	if (tk->fd == -1 || !start_string)
+	if (tk->fd == -1 || !isatty (tk->fd) || !start_string)
 		return 1;
 
 	/* The terminfo database will contain keys in application cursor key mode.
 	 * We may need to enable that mode
 	 */
-
-	// FIXME: isatty() should suffice
-	/* There's no point trying to write() to a pipe */
-	if (fstat (tk->fd, &statbuf) == -1)
-		return 0;
-
-	if (S_ISFIFO (statbuf.st_mode))
-		return 1;
 
 	// Can't call putp or tputs because they suck and don't give us fd control
 	len = strlen (start_string);
@@ -346,18 +335,10 @@ static int
 stop_driver (termkey_t *tk, void *info)
 {
 	termkey_ti_t *ti = info;
-	struct stat statbuf;
 	char *stop_string = ti->stop_string;
 	size_t len;
 
-	if (tk->fd == -1 || !stop_string)
-		return 1;
-
-	/* There's no point trying to write() to a pipe */
-	if (fstat (tk->fd, &statbuf) == -1)
-		return 0;
-
-	if (S_ISFIFO (statbuf.st_mode))
+	if (tk->fd == -1 || !isatty (tk->fd) || !stop_string)
 		return 1;
 
 	/* The terminfo database will contain keys in application cursor key mode.
