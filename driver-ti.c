@@ -106,8 +106,7 @@ lookup_next (trie_node_t *n, unsigned char b)
 	{
 	case TYPE_KEY:
 	case TYPE_MOUSE:
-		// FIXME
-		fprintf (stderr, "ABORT: lookup_next within a TYPE_KEY node\n");
+		fprintf (stderr, "fatal: lookup_next within a TYPE_KEY node\n");
 		abort ();
 	case TYPE_ARRAY:
 	{
@@ -117,8 +116,7 @@ lookup_next (trie_node_t *n, unsigned char b)
 		return nar->arr[b - nar->min];
 	}
 	}
-
-	return NULL; // Never reached but keeps compiler happy
+	return NULL;  // Never reached but keeps compiler happy
 }
 
 static void
@@ -186,8 +184,8 @@ load_terminfo (termkey_ti_t *ti, const char *term)
 #else
 	int err;
 
-	/* Have to cast away the const. But it's OK - we know terminfo won't really
-	 * modify term */
+	/* Have to cast away the const. But it's OK - we know terminfo won't
+	 * really modify term */
 	if (setupterm ((char *) term, 1, &err) != OK)
 		return 0;
 #endif
@@ -295,11 +293,10 @@ new_driver (termkey_t *tk, const char *term)
 	return ti;
 
 abort_free_trie:
-	free_trie(ti->root);
+	free_trie (ti->root);
 
 abort_free_ti:
-	free(ti);
-
+	free (ti);
 	return NULL;
 }
 
@@ -487,7 +484,6 @@ funcname2keysym (const char *funcname,
 	if (funcname[0] == 'f' && isdigit (funcname[1]))
 	{
 		*typep = TERMKEY_TYPE_FUNCTION;
-		// FIXME
 		*symp  = atoi (funcname + 1);
 		return 1;
 	}
@@ -502,7 +498,8 @@ funcname2keysym (const char *funcname,
 	}
 
 #ifdef DEBUG
-	fprintf (stderr, "TODO: Need to convert funcname %s to a type/sym\n", funcname);
+	fprintf (stderr, "TODO: Need to convert funcname"
+		" %s to a type/sym\n", funcname);
 #endif
 
 	return 0;
@@ -546,8 +543,8 @@ insert_seq (termkey_ti_t *ti, const char *seq, trie_node_t *node)
 			trie_node_array_t *nar = (trie_node_array_t *) p;
 			if (b < nar->min || b > nar->max)
 			{
-				// FIXME
-				fprintf (stderr, "ASSERT FAIL: Trie insert at 0x%02x is outside of extent bounds (0x%02x..0x%02x)\n",
+				fprintf (stderr, "fatal: trie insert at 0x%02x is outside of"
+					" extent bounds (0x%02x..0x%02x)\n",
 					b, nar->min, nar->max);
 				abort ();
 			}
@@ -557,8 +554,7 @@ insert_seq (termkey_ti_t *ti, const char *seq, trie_node_t *node)
 		}
 		case TYPE_KEY:
 		case TYPE_MOUSE:
-			// FIXME
-			fprintf (stderr, "ASSERT FAIL: Tried to insert child node in TYPE_KEY\n");
+			fprintf (stderr, "fatal: tried to insert child node in TYPE_KEY\n");
 			abort ();
 		}
 
@@ -570,12 +566,9 @@ insert_seq (termkey_ti_t *ti, const char *seq, trie_node_t *node)
 termkey_driver_t termkey_driver_ti =
 {
 	.name         = "terminfo",
-
 	.new_driver   = new_driver,
 	.free_driver  = free_driver,
-
 	.start_driver = start_driver,
 	.stop_driver  = stop_driver,
-
 	.peekkey      = peekkey,
 };

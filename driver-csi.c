@@ -147,6 +147,28 @@ register_csifunc (termkey_type_t type, termkey_sym_t sym, int number)
 }
 
 /*
+ * URxvt seems to emit this instead of ~ when holding Ctrl
+ */
+
+static termkey_result_t
+handle_csi_caret (termkey_t *tk,
+	termkey_key_t *key, int cmd, long *arg, int args)
+{
+	switch (cmd)
+	{
+	case '^':
+	{
+		termkey_result_t res = handle_csifunc (tk, key, cmd, arg, args);
+		if (res == TERMKEY_RES_KEY)
+			key->modifiers |= TERMKEY_KEYMOD_CTRL;
+		return res;
+	}
+	default:
+		return TERMKEY_RES_NONE;
+	}
+}
+
+/*
  * Handler for CSI u extended Unicode keys
  */
 
@@ -531,6 +553,18 @@ register_keys (void)
 
 	csi_handlers['y' - 0x40] = &handle_csi_y;
 
+	// URxvt
+	register_csi_ss3_full (TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_UP,
+		TERMKEY_KEYMOD_CTRL, TERMKEY_KEYMOD_CTRL, 'a');
+	register_csi_ss3_full (TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_DOWN,
+		TERMKEY_KEYMOD_CTRL, TERMKEY_KEYMOD_CTRL, 'b');
+	register_csi_ss3_full (TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_RIGHT,
+		TERMKEY_KEYMOD_CTRL, TERMKEY_KEYMOD_CTRL, 'c');
+	register_csi_ss3_full (TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_LEFT,
+		TERMKEY_KEYMOD_CTRL, TERMKEY_KEYMOD_CTRL, 'd');
+
+	csi_handlers['^' - 0x40] = &handle_csi_caret;
+
 	keyinfo_initialised = 1;
 	return 1;
 }
@@ -610,16 +644,20 @@ peekkey_csi (termkey_t *tk, termkey_csi_t *csi,
 		switch (args)
 		{
 		case 1:
-			fprintf (stderr, "CSI: Unknown arg1=%ld cmd=%c\n", arg[0], (char)cmd);
+			fprintf (stderr, "CSI: Unknown arg1=%ld cmd=%c\n",
+				arg[0], (char) cmd);
 			break;
 		case 2:
-			fprintf (stderr, "CSI: Unknown arg1=%ld arg2=%ld cmd=%c\n", arg[0], arg[1], (char) cmd);
+			fprintf (stderr, "CSI: Unknown arg1=%ld arg2=%ld cmd=%c\n",
+				arg[0], arg[1], (char) cmd);
 			break;
 		case 3:
-			fprintf (stderr, "CSI: Unknown arg1=%ld arg2=%ld arg3=%ld cmd=%c\n", arg[0], arg[1], arg[2], (char) cmd);
+			fprintf (stderr, "CSI: Unknown arg1=%ld arg2=%ld arg3=%ld cmd=%c\n",
+				arg[0], arg[1], arg[2], (char) cmd);
 			break;
 		default:
-			fprintf (stderr, "CSI: Unknown arg1=%ld arg2=%ld arg3=%ld ... args=%d cmd=%c\n", arg[0], arg[1], arg[2], args, (char) cmd);
+			fprintf (stderr, "CSI: Unknown arg1=%ld arg2=%ld arg3=%ld ... "
+				"args=%zu cmd=%c\n", arg[0], arg[1], arg[2], args, (char) cmd);
 			break;
 		}
 #endif
@@ -665,12 +703,12 @@ peekkey_ss3 (termkey_t *tk, termkey_csi_t *csi, size_t introlen,
 	{
 		if (tk->flags & TERMKEY_FLAG_CONVERTKP && ss3_kpalts[cmd - 0x40])
 		{
-			key->type = TERMKEY_TYPE_UNICODE;
+			key->type = TERMKEY_TYPE_KEY;
 			key->code.codepoint = ss3_kpalts[cmd - 0x40];
 			key->modifiers = 0;
 
-			key->utf8[0] = key->code.codepoint;
-			key->utf8[1] = 0;
+			key->multibyte[0] = key->code.codepoint;
+			key->multibyte[1] = 0;
 		}
 		else
 		{
@@ -712,16 +750,13 @@ peekkey (termkey_t *tk, void *info,
 		return peekkey_ss3 (tk, csi, 1, key, force, nbytep);
 	if (b0 == 0x9b)
 		return peekkey_csi (tk, csi, 1, key, force, nbytep);
-	else
-		return TERMKEY_RES_NONE;
+	return TERMKEY_RES_NONE;
 }
 
 termkey_driver_t termkey_driver_csi =
 {
 	.name        = "CSI",
-
 	.new_driver  = new_driver,
 	.free_driver = free_driver,
-
 	.peekkey     = peekkey,
 };

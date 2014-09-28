@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <strings.h>
+#include <langinfo.h>
 
 #include <stdio.h>
 
@@ -14,20 +15,16 @@ void
 termkey_check_version (int major, int minor)
 {
 	if (major != TERMKEY_VERSION_MAJOR)
-	{
-		fprintf (stderr, "libtermkey major version mismatch; %d (wants) != %d (library)\n",
+		fprintf (stderr, "libtermkey major version mismatch;"
+			" %d (wants) != %d (library)\n",
 			major, TERMKEY_VERSION_MAJOR);
-		exit (1);
-	}
-
-	if (minor > TERMKEY_VERSION_MINOR)
-	{
-		fprintf (stderr, "libtermkey minor version mismatch; %d (wants) > %d (library)\n",
+	else if (minor > TERMKEY_VERSION_MINOR)
+		fprintf (stderr, "libtermkey minor version mismatch;"
+			" %d (wants) > %d (library)\n",
 			minor, TERMKEY_VERSION_MINOR);
-		exit (1);
-	}
-
-	// Happy
+	else
+		return;
+	exit (1);
 }
 
 static termkey_driver_t *drivers[] =
@@ -38,7 +35,7 @@ static termkey_driver_t *drivers[] =
 };
 
 // Forwards for the "protected" methods
-static void emit_codepoint (termkey_t *tk, long codepoint, termkey_key_t *key);
+static void emit_codepoint (termkey_t *tk, uint32_t codepoint, termkey_key_t *key);
 static termkey_result_t peekkey_simple (termkey_t *tk,
 	termkey_key_t *key, int force, size_t *nbytes);
 static termkey_result_t peekkey_mouse (termkey_t *tk,
@@ -127,7 +124,7 @@ keynames[] =
 static void
 print_buffer (termkey_t *tk)
 {
-	int i;
+	size_t i;
 	for (i = 0; i < tk->buffcount && i < 20; i++)
 		fprintf (stderr, "%02x ", CHARAT (i));
 	if (tk->buffcount > 20)
@@ -139,9 +136,9 @@ print_key (termkey_t *tk, termkey_key_t *key)
 {
 	switch (key->type)
 	{
-	case TERMKEY_TYPE_UNICODE:
-		fprintf (stderr, "Unicode codepoint=U+%04lx utf8='%s'",
-			key->code.codepoint, key->utf8);
+	case TERMKEY_TYPE_KEY:
+		fprintf (stderr, "Unicode codepoint=U+%04lx multibyte='%s'",
+			(long) key->code.codepoint, key->multibyte);
 		break;
 	case TERMKEY_TYPE_FUNCTION:
 		fprintf (stderr, "Function F%d", key->code.number);
@@ -300,12 +297,12 @@ termkey_alloc (void)
 	tk->buffsize  = 256; /* bytes */
 	tk->hightide  = 0;
 
-	tk->restore_termios_valid = 0;
+	tk->restore_termios_valid = false;
 
 	tk->waittime = 50; /* msec */
 
-	tk->is_closed  = 0;
-	tk->is_started = 0;
+	tk->is_closed  = false;
+	tk->is_started = false;
 
 	tk->nkeynames = 64;
 	tk->keynames  = NULL;
@@ -322,11 +319,23 @@ termkey_alloc (void)
 }
 
 static int
-termkey_init (termkey_t *tk, const char *term)
+termkey_init (termkey_t *tk, const char *term, const char *encoding)
 {
+	if (!encoding)
+		encoding = nl_langinfo (CODESET);
+
+	static const uint16_t endianity = 0x0102;
+	const char *utf32 = (*(uint8_t *) &endianity == 0x01)
+		? "UTF-32BE" : "UTF-32LE";
+
+	if ((tk->to_utf32_conv = iconv_open (utf32, encoding)) == (iconv_t) -1)
+		return 0;
+	if ((tk->from_utf32_conv = iconv_open (encoding, utf32)) == (iconv_t) -1)
+		goto abort_free_to_utf32;
+
 	tk->buffer = malloc (tk->buffsize);
 	if (!tk->buffer)
-		return 0;
+		goto abort_free_from_utf32;
 
 	tk->keynames = malloc (sizeof tk->keynames[0] * tk->nkeynames);
 	if (!tk->keynames)
@@ -345,7 +354,7 @@ termkey_init (termkey_t *tk, const char *term)
 	register_c0 (tk, TERMKEY_SYM_ENTER,     0x0d, NULL);
 	register_c0 (tk, TERMKEY_SYM_ESCAPE,    0x1b, NULL);
 
-	termkey_driver_node_t *tail = NULL;
+	termkey_driver_node_t **tail = &tk->drivers;
 	for (i = 0; drivers[i]; i++)
 	{
 		void *info = (*drivers[i]->new_driver) (tk, term);
@@ -364,12 +373,8 @@ termkey_init (termkey_t *tk, const char *term)
 		thisdrv->info = info;
 		thisdrv->next = NULL;
 
-		if (!tail)
-			tk->drivers = thisdrv;
-		else
-			tail->next = thisdrv;
-
-		tail = thisdrv;
+		*tail = thisdrv;
+		tail = &thisdrv->next;
 
 #ifdef DEBUG
 		fprintf (stderr, "Loaded %s driver\n", drivers[i]->name);
@@ -394,55 +399,36 @@ abort_free_drivers:
 
 abort_free_keynames:
 	free (tk->keynames);
-
 abort_free_buffer:
 	free (tk->buffer);
+abort_free_from_utf32:
+	iconv_close (tk->from_utf32_conv);
+abort_free_to_utf32:
+	iconv_close (tk->to_utf32_conv);
 	return 0;
 }
 
 termkey_t *
-termkey_new (int fd, int flags)
+termkey_new (int fd, const char *encoding, int flags)
 {
 	termkey_t *tk = termkey_alloc ();
 	if (!tk)
 		return NULL;
 
 	tk->fd = fd;
-
-	if (!(flags & (TERMKEY_FLAG_RAW | TERMKEY_FLAG_UTF8)))
-	{
-		char *e;
-
-		/* Most OSes will set .UTF-8. Some will set .utf8. Try to be fairly
-		 * generous in parsing these
-		 */
-		if (((e = getenv("LANG")) || (e = getenv("LC_CTYPE"))
-			|| (e = getenv("LC_ALL"))) && (e = strchr(e, '.')) && e++ &&
-			(!strcasecmp(e, "UTF-8") || !strcasecmp(e, "UTF8")))
-			flags |= TERMKEY_FLAG_UTF8;
-		else
-			flags |= TERMKEY_FLAG_RAW;
-	}
-
 	termkey_set_flags (tk, flags);
 
 	const char *term = getenv ("TERM");
+	if (termkey_init (tk, term, encoding)
+	 && termkey_start (tk))
+		return tk;
 
-	if (!termkey_init (tk, term))
-		goto abort;
-
-	if (!termkey_start (tk))
-		goto abort;
-
-	return tk;
-
-abort:
 	free (tk);
 	return NULL;
 }
 
 termkey_t *
-termkey_new_abstract (const char *term, int flags)
+termkey_new_abstract (const char *term, const char *encoding, int flags)
 {
 	termkey_t *tk = termkey_alloc ();
 	if (!tk)
@@ -450,7 +436,8 @@ termkey_new_abstract (const char *term, int flags)
 
 	tk->fd = -1;
 	termkey_set_flags (tk, flags);
-	if (!termkey_init (tk, term))
+
+	if (!termkey_init (tk, term, encoding))
 	{
 		free (tk);
 		return NULL;
@@ -466,13 +453,17 @@ termkey_free (termkey_t *tk)
 	free (tk->buffer);   tk->buffer   = NULL;
 	free (tk->keynames); tk->keynames = NULL;
 
-	termkey_driver_node_t *p;
-	for (p = tk->drivers; p; )
+	iconv_close (tk->to_utf32_conv);
+	tk->to_utf32_conv = (iconv_t) -1;
+	iconv_close (tk->from_utf32_conv);
+	tk->from_utf32_conv = (iconv_t) -1;
+
+	termkey_driver_node_t *p, *next;
+	for (p = tk->drivers; p; p = next)
 	{
 		(*p->driver->free_driver) (p->info);
-		termkey_driver_node_t *next = p->next;
+		next = p->next;
 		free (p);
-		p = next;
 	}
 	free (tk);
 }
@@ -498,7 +489,7 @@ termkey_start (termkey_t *tk)
 		if (tcgetattr (tk->fd, &termios) == 0)
 		{
 			tk->restore_termios = termios;
-			tk->restore_termios_valid = 1;
+			tk->restore_termios_valid = true;
 
 			termios.c_iflag &= ~(IXON|INLCR|ICRNL);
 			termios.c_lflag &= ~(ICANON|ECHO);
@@ -554,7 +545,7 @@ termkey_stop (termkey_t *tk)
 	if (tk->restore_termios_valid)
 		tcsetattr (tk->fd, TCSANOW, &tk->restore_termios);
 
-	tk->is_started = 0;
+	tk->is_started = false;
 	return 1;
 }
 
@@ -608,7 +599,7 @@ void
 termkey_set_canonflags (termkey_t *tk, int flags)
 {
 	tk->canonflags = flags;
-	if(tk->canonflags & TERMKEY_CANON_SPACESYMBOL)
+	if (tk->canonflags & TERMKEY_CANON_SPACESYMBOL)
 		tk->flags |= TERMKEY_FLAG_SPACESYMBOL;
 	else
 		tk->flags &= ~TERMKEY_FLAG_SPACESYMBOL;
@@ -635,8 +626,8 @@ termkey_set_buffer_size (termkey_t *tk, size_t size)
 size_t
 termkey_get_buffer_remaining (termkey_t *tk)
 {
-	/* Return the total number of free bytes in the buffer, because that's what
- 	* is available to the user. */
+	/* Return the total number of free bytes in the buffer,
+	 * because that's what is available to the user. */
 	return tk->buffsize - tk->buffcount;
 }
 
@@ -654,129 +645,76 @@ eat_bytes (termkey_t *tk, size_t count)
 	tk->buffcount -= count;
 }
 
-static inline unsigned int
-utf8_seqlen (long codepoint)
-{
-	if (codepoint < 0x0000080) return 1;
-	if (codepoint < 0x0000800) return 2;
-	if (codepoint < 0x0010000) return 3;
-	if (codepoint < 0x0200000) return 4;
-	if (codepoint < 0x4000000) return 5;
-	return 6;
-}
+#define MULTIBYTE_INVALID '?'
 
 static void
-fill_utf8 (termkey_key_t *key)
+fill_multibyte (termkey_t *tk, termkey_key_t *key)
 {
-	long codepoint = key->code.codepoint;
-	int nbytes = utf8_seqlen (codepoint);
+	size_t codepoint_len = sizeof key->code.codepoint;
+	char *codepoint_ptr = (char *) &key->code.codepoint;
+	size_t multibyte_len = sizeof key->multibyte;
+	char *multibyte_ptr = (char *) key->multibyte;
 
-	key->utf8[nbytes] = 0;
+	size_t result = iconv (tk->from_utf32_conv,
+		&codepoint_ptr, &codepoint_len, &multibyte_ptr, &multibyte_len);
+	size_t output = sizeof key->multibyte - multibyte_len;
 
-	// This is easier done backwards
-	int b = nbytes;
-	while (b > 1)
+	// Something broke
+	if (result == (size_t) -1 || output == 0)
 	{
-		b--;
-		key->utf8[b] = 0x80 | (codepoint & 0x3f);
-		codepoint >>= 6;
+		key->multibyte[0] = MULTIBYTE_INVALID;
+		key->multibyte[1] = 0;
+		return;
 	}
 
-	switch (nbytes)
-	{
-		case 1: key->utf8[0] =        (codepoint & 0x7f); break;
-		case 2: key->utf8[0] = 0xc0 | (codepoint & 0x1f); break;
-		case 3: key->utf8[0] = 0xe0 | (codepoint & 0x0f); break;
-		case 4: key->utf8[0] = 0xf0 | (codepoint & 0x07); break;
-		case 5: key->utf8[0] = 0xf8 | (codepoint & 0x03); break;
-		case 6: key->utf8[0] = 0xfc | (codepoint & 0x01); break;
-	}
+	// Append a null character, as it wasn't port of the input
+	key->multibyte[output] = 0;
 }
 
-#define UTF8_INVALID 0xFFFD
 static termkey_result_t
-parse_utf8 (const unsigned char *bytes, size_t len, long *cp, size_t *nbytep)
+parse_multibyte (termkey_t *tk, const unsigned char *bytes, size_t len,
+	uint32_t *cp, size_t *nbytep)
 {
-	unsigned int nbytes;
-	unsigned char b0 = bytes[0];
+	size_t multibyte_len = len;
+	char *multibyte_ptr = (char *) bytes;
+	size_t codepoint_len = sizeof *cp;
+	char *codepoint_ptr = (char *) cp;
 
-	if (b0 < 0x80)
-	{
-		// Single byte ASCII
-		*cp = b0;
-		*nbytep = 1;
-		return TERMKEY_RES_KEY;
-	}
-	else if (b0 < 0xc0)
-	{
-		// Starts with a continuation byte - that's not right
-		*cp = UTF8_INVALID;
-		*nbytep = 1;
-		return TERMKEY_RES_KEY;
-	}
-	else if (b0 < 0xe0)
-	{
-		nbytes = 2;
-		*cp = b0 & 0x1f;
-	}
-	else if (b0 < 0xf0)
-	{
-		nbytes = 3;
-		*cp = b0 & 0x0f;
-	}
-	else if (b0 < 0xf8)
-	{
-		nbytes = 4;
-		*cp = b0 & 0x07;
-	}
-	else if (b0 < 0xfc)
-	{
-		nbytes = 5;
-		*cp = b0 & 0x03;
-	}
-	else if (b0 < 0xfe)
-	{
-		nbytes = 6;
-		*cp = b0 & 0x01;
-	}
-	else
-	{
-		*cp = UTF8_INVALID;
-		*nbytep = 1;
-		return TERMKEY_RES_KEY;
-	}
+	// Fingers crossed...
+	errno = 0;
+	iconv (tk->to_utf32_conv,
+		&multibyte_ptr, &multibyte_len, &codepoint_ptr, &codepoint_len);
 
-	for (unsigned int b = 1; b < nbytes; b++)
+	// Only one Unicode character could have been processed at maximum,
+	// so let's just set the number of processed bytes to the difference
+	*nbytep = len - multibyte_len;
+
+	// Nothing has been converted, let's examine what happened
+	if (codepoint_ptr == (char *) cp)
 	{
-		if (b >= len)
+		if (errno == 0)
+			// The input was probably a shift sequence
 			return TERMKEY_RES_AGAIN;
-
-		unsigned char cb = bytes[b];
-		if (cb < 0x80 || cb >= 0xc0)
+		if (errno == EINVAL)
+			// Incomplete character or shift sequence
+			return TERMKEY_RES_AGAIN;
+		if (errno == EILSEQ)
 		{
-			*cp = UTF8_INVALID;
-			*nbytep = b;
+			// Invalid multibyte sequence in the input, let's try going
+			// byte after byte in hope we skip it completely
+			*cp = MULTIBYTE_INVALID;
+			*nbytep = 1;
 			return TERMKEY_RES_KEY;
 		}
 
-		*cp <<= 6;
-		*cp |= cb & 0x3f;
+		// We can't really get E2BIG so what the fuck is going on here
+		abort ();
 	}
-
-	// Check for overlong sequences
-	if (nbytes > utf8_seqlen (*cp))
-		*cp = UTF8_INVALID;
-
-	// Check for UTF-16 surrogates or invalid *cps
-	if ((*cp >= 0xD800 && *cp <= 0xDFFF) || *cp == 0xFFFE || *cp == 0xFFFF)
-		*cp = UTF8_INVALID;
-
-	*nbytep = nbytes;
 	return TERMKEY_RES_KEY;
 }
 
 static void
-emit_codepoint (termkey_t *tk, long codepoint, termkey_key_t *key)
+emit_codepoint (termkey_t *tk, uint32_t codepoint, termkey_key_t *key)
 {
 	if (codepoint < 0x20)
 	{
@@ -793,14 +731,15 @@ emit_codepoint (termkey_t *tk, long codepoint, termkey_key_t *key)
 
 		if (!key->code.sym)
 		{
-			key->type = TERMKEY_TYPE_UNICODE;
-			/* Generically modified Unicode ought not report the SHIFT state, or else
-			 * we get into complicationg trying to report Shift-; vs : and so on...
-			 * In order to be able to represent Ctrl-Shift-A as CTRL modified
-			 * unicode A, we need to call Ctrl-A simply 'a', lowercase
+			key->type = TERMKEY_TYPE_KEY;
+			/* Generically modified Unicode ought not report the SHIFT state,
+			 * or else we get into complications trying to report Shift-; vs :
+			 * and so on...  In order to be able to represent Ctrl-Shift-A as
+			 * CTRL modified unicode A, we need to call Ctrl-A simply 'a',
+			 * lowercase
 			 */
 			if (codepoint + 0x40 >= 'A' && codepoint + 0x40 <= 'Z')
-				// it's a letter - use lowecase instead
+				// It's a letter - use lowecase instead
 				key->code.codepoint = codepoint + 0x60;
 			else
 				key->code.codepoint = codepoint + 0x40;
@@ -816,32 +755,17 @@ emit_codepoint (termkey_t *tk, long codepoint, termkey_key_t *key)
 		key->code.sym = TERMKEY_SYM_DEL;
 		key->modifiers = 0;
 	}
-	else if (codepoint >= 0x20 && codepoint < 0x80)
-	{
-		// ASCII lowbyte range
-		key->type = TERMKEY_TYPE_UNICODE;
-		key->code.codepoint = codepoint;
-		key->modifiers = 0;
-	}
-	else if (codepoint >= 0x80 && codepoint < 0xa0)
-	{
-		// UTF-8 never starts with a C1 byte. So we can be sure of these
-		key->type = TERMKEY_TYPE_UNICODE;
-		key->code.codepoint = codepoint - 0x40;
-		key->modifiers = TERMKEY_KEYMOD_CTRL | TERMKEY_KEYMOD_ALT;
-	}
 	else
 	{
-		// UTF-8 codepoint
-		key->type = TERMKEY_TYPE_UNICODE;
+		key->type = TERMKEY_TYPE_KEY;
 		key->code.codepoint = codepoint;
 		key->modifiers = 0;
 	}
 
 	termkey_canonicalise (tk, key);
 
-	if (key->type == TERMKEY_TYPE_UNICODE)
-		fill_utf8 (key);
+	if (key->type == TERMKEY_TYPE_KEY)
+		fill_multibyte (tk, key);
 }
 
 void
@@ -851,7 +775,7 @@ termkey_canonicalise (termkey_t *tk, termkey_key_t *key)
 
 	if (flags & TERMKEY_CANON_SPACESYMBOL)
 	{
-		if (key->type == TERMKEY_TYPE_UNICODE && key->code.number == 0x20)
+		if (key->type == TERMKEY_TYPE_KEY && key->code.codepoint == 0x20)
 		{
 			key->type = TERMKEY_TYPE_KEYSYM;
 			key->code.sym = TERMKEY_SYM_SPACE;
@@ -862,9 +786,9 @@ termkey_canonicalise (termkey_t *tk, termkey_key_t *key)
 		if (key->type == TERMKEY_TYPE_KEYSYM
 		 && key->code.sym == TERMKEY_SYM_SPACE)
 		{
-			key->type = TERMKEY_TYPE_UNICODE;
-			key->code.number = 0x20;
-			fill_utf8 (key);
+			key->type = TERMKEY_TYPE_KEY;
+			key->code.codepoint = 0x20;
+			fill_multibyte (tk, key);
 		}
 	}
 
@@ -962,14 +886,14 @@ peekkey_simple (termkey_t *tk, termkey_key_t *key, int force, size_t *nbytep)
 	if (tk->buffcount == 0)
 		return tk->is_closed ? TERMKEY_RES_EOF : TERMKEY_RES_NONE;
 
-	unsigned char b0 = CHARAT(0);
+	unsigned char b0 = CHARAT (0);
 	if (b0 == 0x1b)
 	{
 		// Escape-prefixed value? Might therefore be Alt+key
 		if (tk->buffcount == 1)
 		{
-			// This might be an <Esc> press, or it may want to be part of a longer
-			// sequence
+			// This might be an <Esc> press, or it may want to be part
+			// of a longer sequence
 			if (!force)
 				return TERMKEY_RES_AGAIN;
 
@@ -1004,46 +928,38 @@ peekkey_simple (termkey_t *tk, termkey_key_t *key, int force, size_t *nbytep)
 
 		return metakey_result;
 	}
-	else if (b0 < 0xa0)
+	else if (!(tk->flags & TERMKEY_FLAG_RAW))
 	{
-		// Single byte C0, G0 or C1 - C1 is never UTF-8 initial byte
-		(*tk->method.emit_codepoint) (tk, b0, key);
-		*nbytep = 1;
-		return TERMKEY_RES_KEY;
-	}
-	else if (tk->flags & TERMKEY_FLAG_UTF8)
-	{
-		// Some UTF-8
-		long codepoint;
-		termkey_result_t res = parse_utf8
-			(tk->buffer + tk->buffstart, tk->buffcount, &codepoint, nbytep);
+		uint32_t codepoint;
+		termkey_result_t res = parse_multibyte
+			(tk, tk->buffer + tk->buffstart, tk->buffcount, &codepoint, nbytep);
 
 		if (res == TERMKEY_RES_AGAIN && force)
 		{
-			/* There weren't enough bytes for a complete UTF-8 sequence but caller
- 			* demands an answer. About the best thing we can do here is eat as many
- 			* bytes as we have, and emit a UTF8_INVALID. If the remaining bytes
- 			* arrive later, they'll be invalid too.
- 			*/
-			codepoint = UTF8_INVALID;
+			/* There weren't enough bytes for a complete character but
+			 * caller demands an answer.  About the best thing we can do here
+			 * is eat as many bytes as we have, and emit a MULTIBYTE_INVALID.
+			 * If the remaining bytes arrive later, they'll be invalid too.
+			 */
+			codepoint = MULTIBYTE_INVALID;
 			*nbytep = tk->buffcount;
 			res = TERMKEY_RES_KEY;
 		}
 
-		key->type = TERMKEY_TYPE_UNICODE;
+		key->type = TERMKEY_TYPE_KEY;
 		key->modifiers = 0;
 		(*tk->method.emit_codepoint) (tk, codepoint, key);
 		return res;
 	}
 	else
 	{
-		// Non UTF-8 case - just report the raw byte
-		key->type = TERMKEY_TYPE_UNICODE;
+		// Non multibyte case - just report the raw byte
+		key->type = TERMKEY_TYPE_KEY;
 		key->code.codepoint = b0;
 		key->modifiers = 0;
 
-		key->utf8[0] = key->code.codepoint;
-		key->utf8[1] = 0;
+		key->multibyte[0] = b0;
+		key->multibyte[1] = 0;
 
 		*nbytep = 1;
 		return TERMKEY_RES_KEY;
@@ -1078,7 +994,7 @@ termkey_getkey (termkey_t *tk, termkey_key_t *key)
 	if (ret == TERMKEY_RES_KEY)
 		eat_bytes (tk, nbytes);
 
-	if(ret == TERMKEY_RES_AGAIN)
+	if (ret == TERMKEY_RES_AGAIN)
 		/* Call peekkey() again in force mode to obtain whatever it can */
 		(void) peekkey (tk, key, 1, &nbytes);
 		/* Don't eat it yet though */
@@ -1145,7 +1061,7 @@ retry:
 				return TERMKEY_RES_ERROR;
 			}
 
-			if (fd.revents & (POLLIN|POLLHUP|POLLERR))
+			if (fd.revents & (POLLIN | POLLHUP | POLLERR))
 				ret = termkey_advisereadable (tk);
 			else
 				ret = TERMKEY_RES_NONE;
@@ -1198,7 +1114,7 @@ retry:
 	}
 	if (len < 1)
 	{
-		tk->is_closed = 1;
+		tk->is_closed = true;
 		return TERMKEY_RES_NONE;
 	}
 	tk->buffcount += len;
@@ -1363,15 +1279,15 @@ termkey_strfkey (termkey_t *tk, char *buffer, size_t len,
 		!!(format & TERMKEY_FORMAT_LOWERMOD) * 4];
 
 	int wrapbracket = (format & TERMKEY_FORMAT_WRAPBRACKET) &&
-		(key->type != TERMKEY_TYPE_UNICODE || key->modifiers != 0);
+		(key->type != TERMKEY_TYPE_KEY || key->modifiers != 0);
 
 	char sep = (format & TERMKEY_FORMAT_SPACEMOD) ? ' ' : '-';
 
 	if (format & TERMKEY_FORMAT_CARETCTRL &&
- 		key->type == TERMKEY_TYPE_UNICODE &&
+		key->type == TERMKEY_TYPE_KEY &&
  		key->modifiers == TERMKEY_KEYMOD_CTRL)
 	{
-		long codepoint = key->code.codepoint;
+		uint32_t codepoint = key->code.codepoint;
 
 		// Handle some of the special casesfirst
 		if (codepoint >= 'a' && codepoint <= 'z')
@@ -1406,7 +1322,7 @@ termkey_strfkey (termkey_t *tk, char *buffer, size_t len,
 	if (key->modifiers & TERMKEY_KEYMOD_ALT)
 	{
 		l = snprintf (buffer + pos, len - pos, "%s%c", mods->alt, sep);
-		if(l <= 0)
+		if (l <= 0)
 			return pos;
 		pos += l;
 	}
@@ -1427,10 +1343,10 @@ termkey_strfkey (termkey_t *tk, char *buffer, size_t len,
 
 	switch (key->type)
 	{
-	case TERMKEY_TYPE_UNICODE:
-		if (!key->utf8[0]) // In case of user-supplied key structures
-			fill_utf8 (key);
-		l = snprintf (buffer + pos, len - pos, "%s", key->utf8);
+	case TERMKEY_TYPE_KEY:
+		if (!key->multibyte[0]) // In case of user-supplied key structures
+			fill_multibyte (tk, key);
+		l = snprintf (buffer + pos, len - pos, "%s", key->multibyte);
 		break;
 	case TERMKEY_TYPE_KEYSYM:
 	{
@@ -1454,7 +1370,7 @@ termkey_strfkey (termkey_t *tk, char *buffer, size_t len,
 
 		static const char *evnames[] =
 			{ "Unknown", "Press", "Drag", "Release" };
-		l = snprintf(buffer + pos, len - pos,
+		l = snprintf (buffer + pos, len - pos,
 			"Mouse%s(%d)", evnames[ev], button);
 		if (format & TERMKEY_FORMAT_MOUSE_POS)
 		{
@@ -1478,7 +1394,7 @@ termkey_strfkey (termkey_t *tk, char *buffer, size_t len,
 		else
 			l = snprintf (buffer + pos, len - pos,
 				"Mode(%d=%d)", mode, value);
-		// XXX: should this fall through?
+		break;
 	}
 	case TERMKEY_TYPE_UNKNOWN_CSI:
 		l = snprintf (buffer + pos, len - pos,
@@ -1514,19 +1430,20 @@ termkey_strpkey (termkey_t *tk,
 	if ((format & TERMKEY_FORMAT_CARETCTRL) && str[0] == '^' && str[1])
 	{
 		str = termkey_strpkey (tk,
-			str+1, key, format & ~TERMKEY_FORMAT_CARETCTRL);
+			str + 1, key, format & ~TERMKEY_FORMAT_CARETCTRL);
 
 		if (!str
- 		 || key->type != TERMKEY_TYPE_UNICODE
+		 || key->type != TERMKEY_TYPE_KEY
  		 || key->code.codepoint < '@'
 		 || key->code.codepoint > '_'
  		 || key->modifiers != 0)
 			return NULL;
 
-		if (key->code.codepoint >= 'A' && key->code.codepoint <= 'Z')
+		if (key->code.codepoint >= 'A'
+		 && key->code.codepoint <= 'Z')
 			key->code.codepoint += 0x20;
 		key->modifiers = TERMKEY_KEYMOD_CTRL;
-		fill_utf8 (key);
+		fill_multibyte (tk, key);
 		return (char *) str;
 	}
 
@@ -1535,7 +1452,6 @@ termkey_strpkey (termkey_t *tk,
 		(format & TERMKEY_FORMAT_SPACEMOD) ? ' ' : '-')))
 	{
 		size_t n = sep_at - str;
-
 		if (n == strlen (mods->alt) && !strncmp (mods->alt, str, n))
 			key->modifiers |= TERMKEY_KEYMOD_ALT;
 		else if (n == strlen (mods->ctrl) && !strncmp (mods->ctrl, str, n))
@@ -1558,18 +1474,17 @@ termkey_strpkey (termkey_t *tk,
 		key->type = TERMKEY_TYPE_KEYSYM;
 		str = endstr;
 	}
-	// FIXME: sscanf
 	else if (sscanf(str, "F%d%zn", &key->code.number, &snbytes) == 1)
 	{
 		key->type = TERMKEY_TYPE_FUNCTION;
 		str += snbytes;
 	}
-	// Unicode must be last
-	else if (parse_utf8 ((unsigned const char *) str, strlen (str),
+	// Multibyte must be last
+	else if (parse_multibyte (tk, (unsigned const char *) str, strlen (str),
 		&key->code.codepoint, &nbytes) == TERMKEY_RES_KEY)
 	{
-		key->type = TERMKEY_TYPE_UNICODE;
-		fill_utf8 (key);
+		key->type = TERMKEY_TYPE_KEY;
+		fill_multibyte (tk, key);
 		str += nbytes;
 	}
 	// TODO: Consider mouse events?
@@ -1595,7 +1510,7 @@ termkey_keycmp (termkey_t *tk,
 
 	switch (key1.type)
 	{
-	case TERMKEY_TYPE_UNICODE:
+	case TERMKEY_TYPE_KEY:
 		if (key1.code.codepoint != key2.code.codepoint)
 			return key1.code.codepoint - key2.code.codepoint;
 		break;
@@ -1636,7 +1551,6 @@ termkey_keycmp (termkey_t *tk,
 		return value1 - value2;
 	}
 	}
-
 	return key1.modifiers - key2.modifiers;
 }
 

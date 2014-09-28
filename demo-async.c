@@ -3,6 +3,8 @@
 
 #include <poll.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <locale.h>
 
 #include "termkey.h"
 
@@ -21,8 +23,9 @@ main (int argc, char *argv[])
 	(void) argv;
 
 	TERMKEY_CHECK_VERSION;
+	setlocale (LC_CTYPE, "");
 
-	termkey_t *tk = termkey_new (0, 0);
+	termkey_t *tk = termkey_new (STDIN_FILENO, NULL, 0);
 
 	if (!tk)
 	{
@@ -31,7 +34,7 @@ main (int argc, char *argv[])
 	}
 
 	struct pollfd fd;
-	fd.fd = 0; /* the file descriptor we passed to termkey_new() */
+	fd.fd = STDIN_FILENO; /* the file descriptor we passed to termkey_new() */
 	fd.events = POLLIN;
 
 	termkey_result_t ret;
@@ -54,8 +57,8 @@ main (int argc, char *argv[])
 		{
 			on_key (tk, &key);
 
-			if (key.type == TERMKEY_TYPE_UNICODE
-			 && key.modifiers & TERMKEY_KEYMOD_CTRL
+			if (key.type == TERMKEY_TYPE_KEY
+			 && (key.modifiers & TERMKEY_KEYMOD_CTRL)
 			 && (key.code.codepoint == 'C' || key.code.codepoint == 'c'))
 				running = 0;
 		}

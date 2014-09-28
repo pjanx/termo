@@ -1,9 +1,10 @@
-// we want optarg
+// We want optarg
 #define _XOPEN_SOURCE 600
 
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
+#include <locale.h>
 
 #include "termkey.h"
 
@@ -11,6 +12,7 @@ int
 main(int argc, char *argv[])
 {
 	TERMKEY_CHECK_VERSION;
+	setlocale (LC_CTYPE, "");
 
 	int mouse = 0;
 	int mouse_proto = 0;
@@ -41,18 +43,18 @@ main(int argc, char *argv[])
 		}
 	}
 
-	tk = termkey_new (0, TERMKEY_FLAG_SPACESYMBOL | TERMKEY_FLAG_CTRLC);
-
+	tk = termkey_new (STDIN_FILENO, NULL,
+		TERMKEY_FLAG_SPACESYMBOL | TERMKEY_FLAG_CTRLC);
 	if (!tk)
 	{
 		fprintf (stderr, "Cannot allocate termkey instance\n");
 		exit (1);
 	}
 
-	if (termkey_get_flags (tk) & TERMKEY_FLAG_UTF8)
-		printf ("Termkey in UTF-8 mode\n");
-	else if (termkey_get_flags (tk) & TERMKEY_FLAG_RAW)
+	if (termkey_get_flags (tk) & TERMKEY_FLAG_RAW)
 		printf ("Termkey in RAW mode\n");
+	else
+		printf ("Termkey in multibyte mode\n");
 
 	termkey_result_t ret;
 	termkey_key_t key;
@@ -103,12 +105,12 @@ main(int argc, char *argv[])
 			else
 				printf ("Key %s\n", buffer);
 
-			if (key.type == TERMKEY_TYPE_UNICODE
+			if (key.type == TERMKEY_TYPE_KEY
 			 && key.modifiers & TERMKEY_KEYMOD_CTRL
 			 && (key.code.codepoint == 'C' || key.code.codepoint == 'c'))
 				break;
 
-			if (key.type == TERMKEY_TYPE_UNICODE
+			if (key.type == TERMKEY_TYPE_KEY
 			 && key.modifiers == 0
 			 && key.code.codepoint == '?')
 			{
@@ -121,7 +123,7 @@ main(int argc, char *argv[])
 		{
 			if (errno != EINTR)
 			{
-				perror("termkey_waitkey");
+				perror ("termkey_waitkey");
 				break;
 			}
 			printf ("Interrupted by signal\n");

@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <glib.h>
+#include <unistd.h>
+#include <locale.h>
 
 #include "termkey.h"
 
@@ -49,9 +51,13 @@ stdin_io (GIOChannel *source, GIOCondition condition, gpointer data)
 int
 main (int argc, char *argv[])
 {
-	TERMKEY_CHECK_VERSION;
+	(void) argc;
+	(void) argv;
 
-	tk = termkey_new (0, 0);
+	TERMKEY_CHECK_VERSION;
+	setlocale (LC_CTYPE, "");
+
+	tk = termkey_new (STDIN_FILENO, NULL, 0);
 	if (!tk)
 	{
 		fprintf (stderr, "Cannot allocate termkey instance\n");
@@ -59,7 +65,8 @@ main (int argc, char *argv[])
 	}
 
 	GMainLoop *loop = g_main_loop_new (NULL, FALSE);
-	g_io_add_watch (g_io_channel_unix_new (0), G_IO_IN, stdin_io, NULL);
+	g_io_add_watch (g_io_channel_unix_new (STDIN_FILENO),
+		G_IO_IN, stdin_io, NULL);
 	g_main_loop_run (loop);
 	termkey_destroy (tk);
 }

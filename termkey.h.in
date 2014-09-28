@@ -92,7 +92,7 @@ enum termkey_sym
 typedef enum termkey_type termkey_type_t;
 enum termkey_type
 {
-	TERMKEY_TYPE_UNICODE,
+	TERMKEY_TYPE_KEY,
 	TERMKEY_TYPE_FUNCTION,
 	TERMKEY_TYPE_KEYSYM,
 	TERMKEY_TYPE_MOUSE,
@@ -135,7 +135,7 @@ struct termkey_key
 	termkey_type_t type;
 	union
 	{
-		long          codepoint; /* TERMKEY_TYPE_UNICODE */
+		uint32_t      codepoint; /* TERMKEY_TYPE_KEY */
 		int           number;    /* TERMKEY_TYPE_FUNCTION */
 		termkey_sym_t sym;       /* TERMKEY_TYPE_KEYSYM */
 		char          mouse[4];  /* TERMKEY_TYPE_MOUSE */
@@ -145,21 +145,27 @@ struct termkey_key
 	int modifiers;
 
 	/* The raw multibyte sequence for the key */
-	char utf8[MB_LEN_MAX + 1];
+	char multibyte[MB_LEN_MAX + 1];
 };
 
 typedef struct termkey termkey_t;
 
 enum
 {
-	TERMKEY_FLAG_NOINTERPRET = 1 << 0, /* Do not interpret C0//DEL codes if possible */
-	TERMKEY_FLAG_CONVERTKP   = 1 << 1, /* Convert KP codes to regular keypresses */
-	TERMKEY_FLAG_RAW         = 1 << 2, /* Input is raw bytes, not UTF-8 */
-	TERMKEY_FLAG_UTF8        = 1 << 3, /* Input is definitely UTF-8 */
-	TERMKEY_FLAG_NOTERMIOS   = 1 << 4, /* Do not make initial termios calls on construction */
-	TERMKEY_FLAG_SPACESYMBOL = 1 << 5, /* Sets TERMKEY_CANON_SPACESYMBOL */
-	TERMKEY_FLAG_CTRLC       = 1 << 6, /* Allow Ctrl-C to be read as normal, disabling SIGINT */
-	TERMKEY_FLAG_EINTR       = 1 << 7  /* Return ERROR on signal (EINTR) rather than retry */
+	/* Do not interpret C0//DEL codes if possible */
+	TERMKEY_FLAG_NOINTERPRET = 1 << 0,
+	/* Convert KP codes to regular keypresses */
+	TERMKEY_FLAG_CONVERTKP   = 1 << 1,
+	/* Don't try to decode the input characters */
+	TERMKEY_FLAG_RAW         = 1 << 2,
+	/* Do not make initial termios calls on construction */
+	TERMKEY_FLAG_NOTERMIOS   = 1 << 4,
+	/* Sets TERMKEY_CANON_SPACESYMBOL */
+	TERMKEY_FLAG_SPACESYMBOL = 1 << 5,
+	/* Allow Ctrl-C to be read as normal, disabling SIGINT */
+	TERMKEY_FLAG_CTRLC       = 1 << 6,
+	/* Return ERROR on signal (EINTR) rather than retry */
+	TERMKEY_FLAG_EINTR       = 1 << 7
 };
 
 enum
@@ -170,8 +176,9 @@ enum
 
 void termkey_check_version (int major, int minor);
 
-termkey_t *termkey_new (int fd, int flags);
-termkey_t *termkey_new_abstract (const char *term, int flags);
+termkey_t *termkey_new (int fd, const char *encoding, int flags);
+termkey_t *termkey_new_abstract (const char *term,
+	const char *encoding, int flags);
 void termkey_free (termkey_t *tk);
 void termkey_destroy (termkey_t *tk);
 
@@ -226,15 +233,22 @@ termkey_result_t termkey_interpret_csi (termkey_t *tk,
 typedef enum termkey_format termkey_format_t;
 enum termkey_format
 {
-	TERMKEY_FORMAT_LONGMOD     = 1 << 0, /* Shift-... instead of S-... */
-	TERMKEY_FORMAT_CARETCTRL   = 1 << 1, /* ^X instead of C-X */
-	TERMKEY_FORMAT_ALTISMETA   = 1 << 2, /* Meta- or M- instead of Alt- or A- */
-	TERMKEY_FORMAT_WRAPBRACKET = 1 << 3, /* Wrap special keys in brackets like <Escape> */
-	TERMKEY_FORMAT_SPACEMOD    = 1 << 4, /* M Foo instead of M-Foo */
-	TERMKEY_FORMAT_LOWERMOD    = 1 << 5, /* meta or m instead of Meta or M */
-	TERMKEY_FORMAT_LOWERSPACE  = 1 << 6, /* page down instead of PageDown */
-
-	TERMKEY_FORMAT_MOUSE_POS   = 1 << 8  /* Include mouse position if relevant; @ col,line */
+	/* Shift-... instead of S-... */
+	TERMKEY_FORMAT_LONGMOD     = 1 << 0,
+	/* ^X instead of C-X */
+	TERMKEY_FORMAT_CARETCTRL   = 1 << 1,
+	/* Meta- or M- instead of Alt- or A- */
+	TERMKEY_FORMAT_ALTISMETA   = 1 << 2,
+	/* Wrap special keys in brackets like <Escape> */
+	TERMKEY_FORMAT_WRAPBRACKET = 1 << 3,
+	/* M Foo instead of M-Foo */
+	TERMKEY_FORMAT_SPACEMOD    = 1 << 4,
+	/* meta or m instead of Meta or M */
+	TERMKEY_FORMAT_LOWERMOD    = 1 << 5,
+	/* page down instead of PageDown */
+	TERMKEY_FORMAT_LOWERSPACE  = 1 << 6,
+	/* Include mouse position if relevant; @ col,line */
+	TERMKEY_FORMAT_MOUSE_POS   = 1 << 8
 };
 
 /* Some useful combinations */

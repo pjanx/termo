@@ -5,6 +5,8 @@
 
 #include <stdint.h>
 #include <termios.h>
+#include <stdbool.h>
+#include <iconv.h>
 
 typedef struct termkey_driver termkey_driver_t;
 struct termkey_driver
@@ -40,29 +42,30 @@ struct termkey
 	int fd;
 	int flags;
 	int canonflags;
+
 	unsigned char *buffer;
 	size_t buffstart; // First offset in buffer
-	size_t buffcount; // NUMBER of entires valid in buffer
+	size_t buffcount; // Number of entires valid in buffer
 	size_t buffsize; // Total malloc'ed size
 
-	// Position beyond buffstart at which peekkey() should next start
-	// normally 0, but see also termkey_interpret_csi().
+	// Position beyond buffstart at which peekkey() should next start.
+	// Normally 0, but see also termkey_interpret_csi().
 	size_t hightide;
 
 	struct termios restore_termios;
-	char restore_termios_valid;
+	bool restore_termios_valid;
 
-	int waittime; // msec
+	int waittime; // In milliseconds
 
-	char is_closed;
-	char is_started;
+	bool is_closed; // We've received EOF
+	bool is_started;
 
 	int nkeynames;
 	const char **keynames;
 
-	// There are 32 C0 codes
-	keyinfo_t c0[32];
-
+	keyinfo_t c0[32]; // There are 32 C0 codes
+	iconv_t to_utf32_conv;
+	iconv_t from_utf32_conv;
 	termkey_driver_node_t *drivers;
 
 	// Now some "protected" methods for the driver to call but which we don't
@@ -70,7 +73,7 @@ struct termkey
 	struct
 	{
 		void (*emit_codepoint) (termkey_t *tk,
-			long codepoint, termkey_key_t *key);
+			uint32_t codepoint, termkey_key_t *key);
 		termkey_result_t (*peekkey_simple) (termkey_t *tk,
 			termkey_key_t *key, int force, size_t *nbytes);
 		termkey_result_t (*peekkey_mouse) (termkey_t *tk,
