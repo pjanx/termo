@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <locale.h>
 
-#include "termkey.h"
+#include "termkey2.h"
 
 static termkey_t *tk;
 static int timeout_id;

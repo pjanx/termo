@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <locale.h>
 
-#include "termkey.h"
+#include "termkey2.h"
 
 int
 main(int argc, char *argv[])

@@ -1,8 +1,8 @@
 // we want strdup()
 #define _XOPEN_SOURCE 600
 
-#include "termkey.h"
-#include "termkey-internal.h"
+#include "termkey2.h"
+#include "termkey2-internal.h"
 
 #ifdef HAVE_UNIBILIUM
 # include <unibilium.h>
@@ -240,7 +240,7 @@ load_terminfo (termkey_ti_t *ti, const char *term)
 
 		if (node && !insert_seq (ti, value, node))
 		{
-			free(node);
+			free (node);
 			return 0;
 		}
 	}

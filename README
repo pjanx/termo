@@ -1,0 +1,60 @@
+termkey2
+========
+
+`termkey2' is a library providing an alternative to ncurses' handling of
+terminal input.  ncurses does a really terrible job at that, mainly wrt. mouse
+support which seems to be utterly broken.  If you can drag things in a terminal
+application, such as in VIM, I can assure you it's not using ncurses for that.
+
+Since terminal I/O is really complicated and full of special cases, this project
+doesn't aspire to also replace the output part of ncurses, but is rather
+complementary to it.  In the end it makes use of its terminfo library.
+
+The API isn't stable yet.  Tell me what needs to be done so I can fix it first.
+
+Building and Installing
+-----------------------
+Build dependencies: GCC/Clang, pkg-config, cmake >= 2.8.5
+Optional dependencies: Unibilium (alternative for curses), GLib (for the demos)
+
+ $ git clone https://github.com/pjanouch/termkey2.git
+ $ mkdir build
+ $ cd build
+ $ cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
+
+To install the library, you can do either the usual:
+ $ make install
+
+Or you can try telling CMake to make a package for you.  For Debian it is:
+ $ cpack -G DEB
+ # dpkg -i termkey2-*.deb
+
+To see the library in action, you can try running the demos, which are
+statically linked against the library, and hence they can be run as they are:
+
+ $ make demos
+
+What's Different From the Original termkey?
+-------------------------------------------
+The main change is throwing away any UTF-8 dependent code, making the library
+capable of handling all unibyte and multibyte encodings supported by iconv on
+your system.  The characters are still presented as Unicode at the end, however,
+as the other sensible option is wchar_t and that doesn't really work well, see
+http://gnu.org/software/libunistring/manual/libunistring.html#The-wchar_005ft-mess
+
+Another change worth mentioning is the usage of CMake instead of the problematic
+libtool-based Makefile.  Now you can include this project in your other CMake-
+-based projects and simply import the target.  No package maintainer action is
+needed for you to enjoy the benefits of proper terminal input.
+
+The rest is just me going silly over formatting and various unimportant stuff.
+Oh, and I've deleted the manpages.  It needs more Doxygen. :)  TBD
+
+License
+-------
+`termkey2' is based on the `termkey' library originally written by Paul Evans
+<leonerd@leonerd.org.uk>, with additional changes made by Přemysl Janouch
+<p.janouch@gmail.com>.
+
+You may use the software under the terms of the MIT license, the text of which
+is included within the package, see the file LICENSE.

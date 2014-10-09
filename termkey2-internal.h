@@ -1,7 +1,7 @@
-#ifndef TERMKEY_INTERNAL_H
-#define TERMKEY_INTERNAL_H
+#ifndef TERMKEY2_INTERNAL_H
+#define TERMKEY2_INTERNAL_H
 
-#include "termkey.h"
+#include "termkey2.h"
 
 #include <stdint.h>
 #include <termios.h>
@@ -111,5 +111,5 @@ termkey_key_set_linecol (termkey_key_t *key, int line, int col)
 extern termkey_driver_t termkey_driver_csi;
 extern termkey_driver_t termkey_driver_ti;
 
-#endif  // ! TERMKEY_INTERNAL_H
+#endif  // ! TERMKEY2_INTERNAL_H
 

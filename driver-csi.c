@@ -1,5 +1,5 @@
-#include "termkey.h"
-#include "termkey-internal.h"
+#include "termkey2.h"
+#include "termkey2-internal.h"
 
 #include <stdio.h>
 #include <string.h>

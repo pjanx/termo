@@ -1,5 +1,5 @@
-#include "termkey.h"
-#include "termkey-internal.h"
+#include "termkey2.h"
+#include "termkey2-internal.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -739,7 +739,7 @@ emit_codepoint (termkey_t *tk, uint32_t codepoint, termkey_key_t *key)
 			 * lowercase
 			 */
 			if (codepoint + 0x40 >= 'A' && codepoint + 0x40 <= 'Z')
-				// It's a letter - use lowecase instead
+				// It's a letter - use lowercase instead
 				key->code.codepoint = codepoint + 0x60;
 			else
 				key->code.codepoint = codepoint + 0x40;

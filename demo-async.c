@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <locale.h>
 
-#include "termkey.h"
+#include "termkey2.h"
 
 static void
 on_key (termkey_t *tk, termkey_key_t *key)

@@ -1,12 +1,11 @@
-#ifndef TERMKEY_H
-#define TERMKEY_H
+#ifndef TERMKEY2_H
+#define TERMKEY2_H
 
 #include <stdint.h>
 #include <stdlib.h>
 #include <limits.h>
 
-#define TERMKEY_VERSION_MAJOR @@VERSION_MAJOR@@
-#define TERMKEY_VERSION_MINOR @@VERSION_MINOR@@
+#include "termkey2-config.h"
 
 #define TERMKEY_CHECK_VERSION \
 	termkey_check_version (TERMKEY_VERSION_MAJOR, TERMKEY_VERSION_MINOR)
@@ -268,5 +267,5 @@ const char *termkey_strpkey (termkey_t *tk, const char *str,
 int termkey_keycmp (termkey_t *tk,
 	const termkey_key_t *key1, const termkey_key_t *key2);
 
-#endif  // ! TERMKEY_H
+#endif  // ! TERMKEY2_H
 
