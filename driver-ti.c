@@ -58,6 +58,9 @@ typedef struct
 
 	char *start_string;
 	char *stop_string;
+
+	bool have_mouse;
+	char *set_mouse_string;
 }
 termkey_ti_t;
 
@@ -172,56 +175,41 @@ compress_trie (struct trie_node *n)
 	return n;
 }
 
-static int
+static bool
 load_terminfo (termkey_ti_t *ti, const char *term)
 {
-	int i;
+	const char *mouse_report_string = NULL;
 
 #ifdef HAVE_UNIBILIUM
 	unibi_term *unibi = unibi_from_term (term);
 	if (!unibi)
-		return 0;
-#else
-	int err;
+		return false;
 
-	/* Have to cast away the const. But it's OK - we know terminfo won't
-	 * really modify term */
-	if (setupterm ((char *) term, 1, &err) != OK)
-		return 0;
-#endif
-
-#ifdef HAVE_UNIBILIUM
-	for (i = unibi_string_begin_ + 1; i < unibi_string_end_; i++)
-#else
-	for (i = 0; strfnames[i]; i++)
-#endif
+	for (int i = unibi_string_begin_ + 1; i < unibi_string_end_; i++)
 	{
-		// Only care about the key_* constants
-#ifdef HAVE_UNIBILIUM
 		const char *name = unibi_name_str (i);
-#else
-		const char *name = strfnames[i];
-#endif
-		if (strncmp (name, "key_", 4) != 0)
-			continue;
-
-#ifdef HAVE_UNIBILIUM
 		const char *value = unibi_get_str (unibi, i);
 #else
+	/* Have to cast away the const. But it's OK - we know terminfo won't
+	 * really modify term */
+	int err;
+	if (setupterm ((char *) term, 1, &err) != OK)
+		return false;
+
+	for (int i = 0; strfnames[i]; i++)
+	{
+		const char *name = strfnames[i];
 		const char *value = tigetstr (strnames[i]);
 #endif
+		// Only care about the key_* constants
+		if (strncmp (name, "key_", 4) != 0)
+			continue;
 		if (!value || value == (char*) -1)
 			continue;
 
-		struct trie_node *node = NULL;
-		if (strcmp (name + 4, "mouse") == 0)
-		{
-			node = malloc (sizeof *node);
-			if (!node)
-				return 0;
-
-			node->type = TYPE_MOUSE;
-		}
+		trie_node_t *node = NULL;
+		if (!strcmp (name + 4, "mouse"))
+			mouse_report_string = value;
 		else
 		{
 			termkey_type_t type;
@@ -241,7 +229,36 @@ load_terminfo (termkey_ti_t *ti, const char *term)
 		if (node && !insert_seq (ti, value, node))
 		{
 			free (node);
-			return 0;
+			return false;
+		}
+	}
+
+	// Clone the behaviour of ncurses for xterm mouse support
+#ifdef HAVE_UNIBILIUM
+	const char *set_mouse_string = unibi_get_str (unibi, "XM");
+#else
+	const char *set_mouse_string = tigetstr ("XM");
+#endif
+	if (!set_mouse_string || set_mouse_string == (char *) -1)
+		ti->set_mouse_string = strdup ("\E[?1000%?%p1%{1}%=%th%el%;");
+	else
+		ti->set_mouse_string = strdup (set_mouse_string);
+
+	if (!mouse_report_string && strstr (term, "xterm"))
+		mouse_report_string = "\x1b[M";
+	if (mouse_report_string)
+	{
+		ti->have_mouse = true;
+
+		trie_node_t *node = malloc (sizeof *node);
+		if (!node)
+			return false;
+
+		node->type = TYPE_MOUSE;
+		if (!insert_seq (ti, mouse_report_string, node))
+		{
+			free (node);
+			return false;
 		}
 	}
 
@@ -271,13 +288,13 @@ load_terminfo (termkey_ti_t *ti, const char *term)
 	unibi_destroy (unibi);
 #endif
 
-	return 1;
+	return true;
 }
 
 static void *
 new_driver (termkey_t *tk, const char *term)
 {
-	termkey_ti_t *ti = malloc (sizeof *ti);
+	termkey_ti_t *ti = calloc (1, sizeof *ti);
 	if (!ti)
 		return NULL;
 
@@ -300,15 +317,14 @@ abort_free_ti:
 	return NULL;
 }
 
-static int
+static bool
 write_string (termkey_t *tk, char *string)
 {
 	if (tk->fd == -1 || !isatty (tk->fd) || !string)
-		return 1;
+		return true;
 
-	/* The terminfo database will contain keys in application cursor key mode.
-	 * We may need to enable that mode
-	 */
+	// The terminfo database will contain keys in application cursor key mode.
+	// We may need to enable that mode
 
 	// Can't call putp or tputs because they suck and don't give us fd control
 	size_t len = strlen (string);
@@ -316,17 +332,38 @@ write_string (termkey_t *tk, char *string)
 	{
 		ssize_t written = write (tk->fd, string, len);
 		if (written == -1)
-			return 0;
+			return false;
 		string += written;
 		len -= written;
 	}
-	return 1;
+	return true;
+}
+
+static bool
+set_mouse (termkey_ti_t *ti, bool enable)
+{
+#ifdef HAVE_UNIBILIUM
+	unibi_var_t params[9] = { enable, 0, 0, 0, 0, 0, 0, 0, 0 };
+	char start_string[unibi_run (ti->set_mouse_string, params, NULL, 0)];
+	unibi_run (ti->set_mouse_string, params,
+		start_string, sizeof start_string);
+#else
+	char *start_string = tparm (ti->set_mouse_string,
+		enable, 0, 0, 0, 0, 0, 0, 0, 0);
+#endif
+	return write_string (ti->tk, start_string);
 }
 
 static int
 start_driver (termkey_t *tk, void *info)
 {
 	termkey_ti_t *ti = info;
+	// TODO: Don't start the mouse automatically, find a nice place to put
+	//   a public function to be called by users.
+	// TODO: Try to autodetect rxvt and use its protocol instead of mode 1000
+	// TODO: Also give the user a choice to use 1005, 1006 or 1015
+	if (ti->have_mouse && !set_mouse (ti, true))
+		return false;
 	return write_string (tk, ti->start_string);
 }
 
@@ -334,6 +371,8 @@ static int
 stop_driver (termkey_t *tk, void *info)
 {
 	termkey_ti_t *ti = info;
+	if (ti->have_mouse && !set_mouse (ti, false))
+		return false;
 	return write_string (tk, ti->stop_string);
 }
 
@@ -342,6 +381,7 @@ free_driver (void *info)
 {
 	termkey_ti_t *ti = info;
 	free_trie (ti->root);
+	free (ti->set_mouse_string);
 	free (ti->start_string);
 	free (ti->stop_string);
 	free (ti);

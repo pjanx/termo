@@ -86,21 +86,21 @@ static inline void
 termkey_key_get_linecol (const termkey_key_t *key, int *line, int *col)
 {
 	if (col)
-		*col = (unsigned char) key->code.mouse[1]
-			| ((unsigned char) key->code.mouse[3] & 0x0f) << 8;
+		*col = ((unsigned char) key->code.mouse[1]
+			| ((unsigned char) key->code.mouse[3] & 0x0f) << 8) - 1;
 
 	if (line)
-		*line = (unsigned char) key->code.mouse[2]
-			| ((unsigned char) key->code.mouse[3] & 0x70) << 4;
+		*line = ((unsigned char) key->code.mouse[2]
+			| ((unsigned char) key->code.mouse[3] & 0x70) << 4) - 1;
 }
 
 static inline void
 termkey_key_set_linecol (termkey_key_t *key, int line, int col)
 {
-	if (line > 0xfff)
+	if (++line > 0xfff)
 		line = 0xfff;
 
-	if (col > 0x7ff)
+	if (++col > 0x7ff)
 		col = 0x7ff;
 
 	key->code.mouse[1] = (line & 0x0ff);

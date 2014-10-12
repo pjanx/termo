@@ -137,6 +137,7 @@ struct termkey_key
 		uint32_t      codepoint; /* TERMKEY_TYPE_KEY */
 		int           number;    /* TERMKEY_TYPE_FUNCTION */
 		termkey_sym_t sym;       /* TERMKEY_TYPE_KEYSYM */
+		// TODO: rewrite this insanity
 		char          mouse[4];  /* TERMKEY_TYPE_MOUSE */
 								 /* opaque, see termkey_interpret_mouse() */
 	} code;

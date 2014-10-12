@@ -196,7 +196,7 @@ handle_csi_u (termkey_t *tk, termkey_key_t *key, int cmd, long *arg, int args)
 }
 
 /*
- * Handler for CSI M / CSI m mouse events in SRG and rxvt encodings
+ * Handler for CSI M / CSI m mouse events in SGR and rxvt encodings
  * Note: This does not handle X10 encoding
  */
 
@@ -262,6 +262,7 @@ termkey_interpret_mouse (termkey_t *tk, const termkey_key_t *key,
 
 	termkey_key_get_linecol (key, line, col);
 
+	// XXX: WTF is this logic?
 	if (!event)
 		return TERMKEY_RES_KEY;
 
