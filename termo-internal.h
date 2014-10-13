@@ -1,43 +1,43 @@
-#ifndef TERMKEY2_INTERNAL_H
-#define TERMKEY2_INTERNAL_H
+#ifndef TERMO_INTERNAL_H
+#define TERMO_INTERNAL_H
 
-#include "termkey2.h"
+#include "termo.h"
 
 #include <stdint.h>
 #include <termios.h>
 #include <stdbool.h>
 #include <iconv.h>
 
-typedef struct termkey_driver termkey_driver_t;
-struct termkey_driver
+typedef struct termo_driver termo_driver_t;
+struct termo_driver
 {
 	const char *name;
-	void *(*new_driver) (termkey_t *tk, const char *term);
+	void *(*new_driver) (termo_t *tk, const char *term);
 	void (*free_driver) (void *info);
-	int (*start_driver) (termkey_t *tk, void *info);
-	int (*stop_driver) (termkey_t *tk, void *info);
-	termkey_result_t (*peekkey) (termkey_t *tk,
-		void *info, termkey_key_t *key, int force, size_t *nbytes);
+	int (*start_driver) (termo_t *tk, void *info);
+	int (*stop_driver) (termo_t *tk, void *info);
+	termo_result_t (*peekkey) (termo_t *tk,
+		void *info, termo_key_t *key, int force, size_t *nbytes);
 };
 
 typedef struct keyinfo keyinfo_t;
 struct keyinfo
 {
-	termkey_type_t type;
-	termkey_sym_t sym;
+	termo_type_t type;
+	termo_sym_t sym;
 	int modifier_mask;
 	int modifier_set;
 };
 
-typedef struct termkey_driver_node termkey_driver_node_t;
-struct termkey_driver_node
+typedef struct termo_driver_node termo_driver_node_t;
+struct termo_driver_node
 {
-	termkey_driver_t *driver;
+	termo_driver_t *driver;
 	void *info;
-	termkey_driver_node_t *next;
+	termo_driver_node_t *next;
 };
 
-struct termkey
+struct termo
 {
 	int fd;
 	int flags;
@@ -49,7 +49,7 @@ struct termkey
 	size_t buffsize; // Total malloc'ed size
 
 	// Position beyond buffstart at which peekkey() should next start.
-	// Normally 0, but see also termkey_interpret_csi().
+	// Normally 0, but see also termo_interpret_csi().
 	size_t hightide;
 
 	struct termios restore_termios;
@@ -66,24 +66,24 @@ struct termkey
 	keyinfo_t c0[32]; // There are 32 C0 codes
 	iconv_t to_utf32_conv;
 	iconv_t from_utf32_conv;
-	termkey_driver_node_t *drivers;
+	termo_driver_node_t *drivers;
 
 	// Now some "protected" methods for the driver to call but which we don't
 	// want exported as real symbols in the library
 	struct
 	{
-		void (*emit_codepoint) (termkey_t *tk,
-			uint32_t codepoint, termkey_key_t *key);
-		termkey_result_t (*peekkey_simple) (termkey_t *tk,
-			termkey_key_t *key, int force, size_t *nbytes);
-		termkey_result_t (*peekkey_mouse) (termkey_t *tk,
-			termkey_key_t *key, size_t *nbytes);
+		void (*emit_codepoint) (termo_t *tk,
+			uint32_t codepoint, termo_key_t *key);
+		termo_result_t (*peekkey_simple) (termo_t *tk,
+			termo_key_t *key, int force, size_t *nbytes);
+		termo_result_t (*peekkey_mouse) (termo_t *tk,
+			termo_key_t *key, size_t *nbytes);
 	}
 	method;
 };
 
 static inline void
-termkey_key_get_linecol (const termkey_key_t *key, int *line, int *col)
+termo_key_get_linecol (const termo_key_t *key, int *line, int *col)
 {
 	if (col)
 		*col = key->code.mouse.x;
@@ -93,7 +93,7 @@ termkey_key_get_linecol (const termkey_key_t *key, int *line, int *col)
 }
 
 static inline void
-termkey_key_set_linecol (termkey_key_t *key, int line, int col)
+termo_key_set_linecol (termo_key_t *key, int line, int col)
 {
 	if (line > UINT16_MAX)
 		line = UINT16_MAX;
@@ -105,8 +105,8 @@ termkey_key_set_linecol (termkey_key_t *key, int line, int col)
 	key->code.mouse.y = line;
 }
 
-extern termkey_driver_t termkey_driver_csi;
-extern termkey_driver_t termkey_driver_ti;
+extern termo_driver_t termo_driver_csi;
+extern termo_driver_t termo_driver_ti;
 
-#endif  // ! TERMKEY2_INTERNAL_H
+#endif  // ! TERMO_INTERNAL_H
 

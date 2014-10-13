@@ -1,4 +1,4 @@
-project (termkey2 C)
+project (termo C)
 cmake_minimum_required (VERSION 2.8.5)
 
 if ("${CMAKE_C_COMPILER_ID}" MATCHES "GNU" OR CMAKE_COMPILER_IS_GNUC)
@@ -18,9 +18,9 @@ set (project_VERSION ${project_VERSION}.${project_VERSION_PATCH})
 set (project_API_VERSION ${project_VERSION_MAJOR})
 
 # Names
-set (project_LIB_NAME "termkey2-${project_API_VERSION}")
-set (project_INCLUDE_NAME "termkey2-${project_API_VERSION}")
-set (project_CMAKE_NAME "TermKey2")
+set (project_LIB_NAME "termo-${project_API_VERSION}")
+set (project_INCLUDE_NAME "termo-${project_API_VERSION}")
+set (project_CMAKE_NAME "Termo")
 
 # Dependecies
 find_package (Curses)
@@ -29,19 +29,19 @@ pkg_check_modules (glib glib-2.0 gio-2.0)
 pkg_check_modules (unibilium unibilium>=0.1.0)
 
 # Header files with configuration
-configure_file (${PROJECT_SOURCE_DIR}/termkey2-config.h.in
-	${PROJECT_BINARY_DIR}/termkey2-config.h)
+configure_file (${PROJECT_SOURCE_DIR}/termo-config.h.in
+	${PROJECT_BINARY_DIR}/termo-config.h)
 include_directories (${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
 
 # Project source files
 set (lib_sources
-	termkey2.c
+	termo.c
 	driver-csi.c
 	driver-ti.c)
 set (lib_headers
-	termkey2.h
-	termkey2-internal.h
-	${PROJECT_BINARY_DIR}/termkey2-config.h)
+	termo.h
+	termo-internal.h
+	${PROJECT_BINARY_DIR}/termo-config.h)
 
 # Project libraries
 if (unibilium_FOUND)
@@ -56,33 +56,33 @@ else (CURSES_FOUND)
 endif (unibilium_FOUND)
 
 # Create the library targets
-add_library (termkey2 SHARED ${lib_sources} ${lib_headers})
-target_link_libraries (termkey2 ${lib_libraries})
-set_target_properties (termkey2 PROPERTIES
+add_library (termo SHARED ${lib_sources} ${lib_headers})
+target_link_libraries (termo ${lib_libraries})
+set_target_properties (termo PROPERTIES
 	OUTPUT_NAME ${project_LIB_NAME}
 	VERSION ${project_VERSION}
 	SOVERSION ${project_API_VERSION})
 
-add_library (termkey2-static STATIC ${lib_sources} ${lib_headers})
-target_link_libraries (termkey2-static ${lib_libraries})
-set_target_properties (termkey2-static PROPERTIES
+add_library (termo-static STATIC ${lib_sources} ${lib_headers})
+target_link_libraries (termo-static ${lib_libraries})
+set_target_properties (termo-static PROPERTIES
 	OUTPUT_NAME ${project_LIB_NAME}
 	VERSION ${project_VERSION}
 	SOVERSION ${project_API_VERSION})
 
 # Demos
 add_executable (demo-async EXCLUDE_FROM_ALL demo-async.c)
-target_link_libraries (demo-async termkey2-static ${lib_libraries})
+target_link_libraries (demo-async termo-static ${lib_libraries})
 
 add_executable (demo EXCLUDE_FROM_ALL demo.c)
-target_link_libraries (demo termkey2-static ${lib_libraries})
+target_link_libraries (demo termo-static ${lib_libraries})
 
 set (demos demo demo-async)
 if (glib_FOUND)
 	include_directories (${glib_INCLUDE_DIRS})
 	add_executable (demo-glib EXCLUDE_FROM_ALL demo-glib.c)
 	target_link_libraries (demo
-		termkey2-static ${lib_libraries} ${glib_LIBRARIES})
+		termo-static ${lib_libraries} ${glib_LIBRARIES})
 	list (APPEND demos demo-glib)
 endif (glib_FOUND)
 
@@ -90,9 +90,9 @@ add_custom_target (demos DEPENDS ${demos})
 
 # The files to be installed
 include (GNUInstallDirs)
-install (TARGETS termkey2 termkey2-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install (TARGETS termo termo-static DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install (FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
-install (FILES termkey2.h ${PROJECT_BINARY_DIR}/termkey2-config.h
+install (FILES termo.h ${PROJECT_BINARY_DIR}/termo-config.h
 	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${project_INCLUDE_NAME})
 
 # Configuration for other CMake projects

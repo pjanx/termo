@@ -1,9 +1,9 @@
-termkey2
-========
+termo
+=====
 
-`termkey2' is a library providing an alternative to ncurses' handling of
-terminal input.  ncurses does a really terrible job at that, mainly wrt. mouse
-support which seems to be utterly broken.  If you can drag things in a terminal
+`termo' is a library providing an alternative to ncurses' handling of terminal
+input.  ncurses does a really terrible job at that, mainly wrt. mouse support
+which seems to be utterly broken.  If you can drag things in a terminal
 application, such as in VIM, I can assure you it's not using ncurses for that.
 
 Since terminal I/O is really complicated and full of special cases, this project
@@ -17,7 +17,7 @@ Building and Installing
 Build dependencies: GCC/Clang, pkg-config, cmake >= 2.8.5
 Optional dependencies: Unibilium (alternative for curses), GLib (for the demos)
 
- $ git clone https://github.com/pjanouch/termkey2.git
+ $ git clone https://github.com/pjanouch/termo.git
  $ mkdir build
  $ cd build
  $ cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
@@ -27,7 +27,7 @@ To install the library, you can do either the usual:
 
 Or you can try telling CMake to make a package for you.  For Debian it is:
  $ cpack -G DEB
- # dpkg -i termkey2-*.deb
+ # dpkg -i termo-*.deb
 
 To see the library in action, you can try running the demos, which are
 statically linked against the library, and hence they can be run as they are:
@@ -38,7 +38,7 @@ What's Different From the Original termkey?
 -------------------------------------------
 The main change is throwing away any UTF-8 dependent code, making the library
 capable of handling all unibyte and multibyte encodings supported by iconv on
-your system.  The characters are still presented as Unicode at the end, however,
+your system.  The characters are still presented as Unicode in the end, however,
 as the other sensible option is wchar_t and that doesn't really work well, see
 http://gnu.org/software/libunistring/manual/libunistring.html#The-wchar_005ft-mess
 
@@ -52,7 +52,7 @@ Oh, and I've deleted the manpages.  It needs more Doxygen. :)  TBD
 
 License
 -------
-`termkey2' is based on the `termkey' library originally written by Paul Evans
+`termo' is based on the `termkey' library originally written by Paul Evans
 <leonerd@leonerd.org.uk>, with additional changes made by Přemysl Janouch
 <p.janouch@gmail.com>.
 

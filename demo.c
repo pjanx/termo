@@ -6,20 +6,20 @@
 #include <errno.h>
 #include <locale.h>
 
-#include "termkey2.h"
+#include "termo.h"
 
 int
 main(int argc, char *argv[])
 {
-	TERMKEY_CHECK_VERSION;
+	TERMO_CHECK_VERSION;
 	setlocale (LC_CTYPE, "");
 
 	int mouse = 0;
 	int mouse_proto = 0;
-	termkey_format_t format = TERMKEY_FORMAT_VIM;
+	termo_format_t format = TERMO_FORMAT_VIM;
 
 	char buffer[50];
-	termkey_t *tk;
+	termo_t *tk;
 
 	int opt;
 	while ((opt = getopt (argc, argv, "m::p:")) != -1)
@@ -43,21 +43,21 @@ main(int argc, char *argv[])
 		}
 	}
 
-	tk = termkey_new (STDIN_FILENO, NULL,
-		TERMKEY_FLAG_SPACESYMBOL | TERMKEY_FLAG_CTRLC);
+	tk = termo_new (STDIN_FILENO, NULL,
+		TERMO_FLAG_SPACESYMBOL | TERMO_FLAG_CTRLC);
 	if (!tk)
 	{
-		fprintf (stderr, "Cannot allocate termkey instance\n");
+		fprintf (stderr, "Cannot allocate termo instance\n");
 		exit (1);
 	}
 
-	if (termkey_get_flags (tk) & TERMKEY_FLAG_RAW)
+	if (termo_get_flags (tk) & TERMO_FLAG_RAW)
 		printf ("Termkey in RAW mode\n");
 	else
 		printf ("Termkey in multibyte mode\n");
 
-	termkey_result_t ret;
-	termkey_key_t key;
+	termo_result_t ret;
+	termo_key_t key;
 
 	if (mouse)
 	{
@@ -66,38 +66,38 @@ main(int argc, char *argv[])
 			printf ("\033[?%dh", mouse_proto);
 	}
 
-	while ((ret = termkey_waitkey (tk, &key)) != TERMKEY_RES_EOF)
+	while ((ret = termo_waitkey (tk, &key)) != TERMO_RES_EOF)
 	{
-		if (ret == TERMKEY_RES_KEY)
+		if (ret == TERMO_RES_KEY)
 		{
-			termkey_strfkey (tk, buffer, sizeof buffer, &key, format);
-			if (key.type == TERMKEY_TYPE_MOUSE)
+			termo_strfkey (tk, buffer, sizeof buffer, &key, format);
+			if (key.type == TERMO_TYPE_MOUSE)
 			{
 				int line, col;
-				termkey_interpret_mouse (tk, &key, NULL, NULL, &line, &col);
+				termo_interpret_mouse (tk, &key, NULL, NULL, &line, &col);
 				printf ("%s at line=%d, col=%d\n", buffer, line, col);
 			}
-			else if (key.type == TERMKEY_TYPE_POSITION)
+			else if (key.type == TERMO_TYPE_POSITION)
 			{
 				int line, col;
-				termkey_interpret_position (tk, &key, &line, &col);
+				termo_interpret_position (tk, &key, &line, &col);
 				printf ("Cursor position report at line=%d, col=%d\n",
 					line, col);
 			}
-			else if (key.type == TERMKEY_TYPE_MODEREPORT)
+			else if (key.type == TERMO_TYPE_MODEREPORT)
 			{
 				int initial, mode, value;
-				termkey_interpret_modereport
+				termo_interpret_modereport
 					(tk, &key, &initial, &mode, &value);
 				printf ("Mode report %s mode %d = %d\n",
 					initial ? "DEC" : "ANSI", mode, value);
 			}
-			else if (key.type == TERMKEY_TYPE_UNKNOWN_CSI)
+			else if (key.type == TERMO_TYPE_UNKNOWN_CSI)
 			{
 				long args[16];
 				size_t nargs = 16;
 				unsigned long command;
-				termkey_interpret_csi (tk, &key, args, &nargs, &command);
+				termo_interpret_csi (tk, &key, args, &nargs, &command);
 				printf ("Unrecognised CSI %c %ld;%ld %c%c\n",
 					(char) (command >> 8), args[0], args[1],
 					(char) (command >> 16), (char) command);
@@ -105,12 +105,12 @@ main(int argc, char *argv[])
 			else
 				printf ("Key %s\n", buffer);
 
-			if (key.type == TERMKEY_TYPE_KEY
-			 && key.modifiers & TERMKEY_KEYMOD_CTRL
+			if (key.type == TERMO_TYPE_KEY
+			 && key.modifiers & TERMO_KEYMOD_CTRL
 			 && (key.code.codepoint == 'C' || key.code.codepoint == 'c'))
 				break;
 
-			if (key.type == TERMKEY_TYPE_KEY
+			if (key.type == TERMO_TYPE_KEY
 			 && key.modifiers == 0
 			 && key.code.codepoint == '?')
 			{
@@ -119,11 +119,11 @@ main(int argc, char *argv[])
 				fflush (stdout);
 			}
 		}
-		else if (ret == TERMKEY_RES_ERROR)
+		else if (ret == TERMO_RES_ERROR)
 		{
 			if (errno != EINTR)
 			{
-				perror ("termkey_waitkey");
+				perror ("termo_waitkey");
 				break;
 			}
 			printf ("Interrupted by signal\n");
@@ -133,5 +133,5 @@ main(int argc, char *argv[])
 	if (mouse)
 		printf ("\033[?%dlMouse mode deactivated\n", mouse);
 
-	termkey_destroy (tk);
+	termo_destroy (tk);
 }

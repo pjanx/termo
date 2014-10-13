@@ -3,24 +3,24 @@
 #include <unistd.h>
 #include <locale.h>
 
-#include "termkey2.h"
+#include "termo.h"
 
-static termkey_t *tk;
+static termo_t *tk;
 static int timeout_id;
 
 static void
-on_key (termkey_t *tk, termkey_key_t *key)
+on_key (termo_t *tk, termo_key_t *key)
 {
 	char buffer[50];
-	termkey_strfkey (tk, buffer, sizeof buffer, key, TERMKEY_FORMAT_VIM);
+	termo_strfkey (tk, buffer, sizeof buffer, key, TERMO_FORMAT_VIM);
 	printf ("%s\n", buffer);
 }
 
 static gboolean
 key_timer (gpointer data)
 {
-	termkey_key_t key;
-	if (termkey_getkey_force (tk, &key) == TERMKEY_RES_KEY)
+	termo_key_t key;
+	if (termo_getkey_force (tk, &key) == TERMO_RES_KEY)
 		on_key (tk, &key);
 	return FALSE;
 }
@@ -33,16 +33,16 @@ stdin_io (GIOChannel *source, GIOCondition condition, gpointer data)
 		if (timeout_id)
 			g_source_remove (timeout_id);
 
-		termkey_advisereadable (tk);
+		termo_advisereadable (tk);
 
-		termkey_result_t ret;
-		termkey_key_t key;
-		while ((ret = termkey_getkey (tk, &key)) == TERMKEY_RES_KEY)
+		termo_result_t ret;
+		termo_key_t key;
+		while ((ret = termo_getkey (tk, &key)) == TERMO_RES_KEY)
 			on_key (tk, &key);
 
-		if (ret == TERMKEY_RES_AGAIN)
+		if (ret == TERMO_RES_AGAIN)
 			timeout_id = g_timeout_add
-				(termkey_get_waittime (tk), key_timer, NULL);
+				(termo_get_waittime (tk), key_timer, NULL);
 	}
 
 	return TRUE;
@@ -54,13 +54,13 @@ main (int argc, char *argv[])
 	(void) argc;
 	(void) argv;
 
-	TERMKEY_CHECK_VERSION;
+	TERMO_CHECK_VERSION;
 	setlocale (LC_CTYPE, "");
 
-	tk = termkey_new (STDIN_FILENO, NULL, 0);
+	tk = termo_new (STDIN_FILENO, NULL, 0);
 	if (!tk)
 	{
-		fprintf (stderr, "Cannot allocate termkey instance\n");
+		fprintf (stderr, "Cannot allocate termo instance\n");
 		exit (1);
 	}
 
@@ -68,5 +68,5 @@ main (int argc, char *argv[])
 	g_io_add_watch (g_io_channel_unix_new (STDIN_FILENO),
 		G_IO_IN, stdin_io, NULL);
 	g_main_loop_run (loop);
-	termkey_destroy (tk);
+	termo_destroy (tk);
 }

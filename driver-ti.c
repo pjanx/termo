@@ -1,8 +1,8 @@
 // we want strdup()
 #define _XOPEN_SOURCE 600
 
-#include "termkey2.h"
-#include "termkey2-internal.h"
+#include "termo.h"
+#include "termo-internal.h"
 
 #ifdef HAVE_UNIBILIUM
 # include <unibilium.h>
@@ -53,7 +53,7 @@ trie_node_array_t;
 
 typedef struct
 {
-	termkey_t *tk;
+	termo_t *tk;
 	trie_node_t *root;
 
 	char *start_string;
@@ -62,14 +62,14 @@ typedef struct
 	bool have_mouse;
 	char *set_mouse_string;
 }
-termkey_ti_t;
+termo_ti_t;
 
-static int funcname2keysym (const char *funcname, termkey_type_t *typep,
-	termkey_sym_t *symp, int *modmask, int *modsetp);
-static int insert_seq (termkey_ti_t *ti, const char *seq, trie_node_t *node);
+static int funcname2keysym (const char *funcname, termo_type_t *typep,
+	termo_sym_t *symp, int *modmask, int *modsetp);
+static int insert_seq (termo_ti_t *ti, const char *seq, trie_node_t *node);
 
 static trie_node_t *
-new_node_key (termkey_type_t type, termkey_sym_t sym, int modmask, int modset)
+new_node_key (termo_type_t type, termo_sym_t sym, int modmask, int modset)
 {
 	trie_node_key_t *n = malloc (sizeof *n);
 	if (!n)
@@ -176,7 +176,7 @@ compress_trie (struct trie_node *n)
 }
 
 static bool
-load_terminfo (termkey_ti_t *ti, const char *term)
+load_terminfo (termo_ti_t *ti, const char *term)
 {
 	const char *mouse_report_string = NULL;
 
@@ -212,15 +212,15 @@ load_terminfo (termkey_ti_t *ti, const char *term)
 			mouse_report_string = value;
 		else
 		{
-			termkey_type_t type;
-			termkey_sym_t sym;
+			termo_type_t type;
+			termo_sym_t sym;
 			int mask = 0;
 			int set = 0;
 
 			if (!funcname2keysym (name + 4, &type, &sym, &mask, &set))
 				continue;
 
-			if (sym == TERMKEY_SYM_NONE)
+			if (sym == TERMO_SYM_NONE)
 				continue;
 
 			node = new_node_key (type, sym, mask, set);
@@ -262,7 +262,7 @@ load_terminfo (termkey_ti_t *ti, const char *term)
 		}
 	}
 
-	/* Take copies of these terminfo strings, in case we build multiple termkey
+	/* Take copies of these terminfo strings, in case we build multiple termo
 	 * instances for multiple different termtypes, and it's different by the
 	 * time we want to use it
 	 */
@@ -292,9 +292,9 @@ load_terminfo (termkey_ti_t *ti, const char *term)
 }
 
 static void *
-new_driver (termkey_t *tk, const char *term)
+new_driver (termo_t *tk, const char *term)
 {
-	termkey_ti_t *ti = calloc (1, sizeof *ti);
+	termo_ti_t *ti = calloc (1, sizeof *ti);
 	if (!ti)
 		return NULL;
 
@@ -318,7 +318,7 @@ abort_free_ti:
 }
 
 static bool
-write_string (termkey_t *tk, char *string)
+write_string (termo_t *tk, char *string)
 {
 	if (tk->fd == -1 || !isatty (tk->fd) || !string)
 		return true;
@@ -340,7 +340,7 @@ write_string (termkey_t *tk, char *string)
 }
 
 static bool
-set_mouse (termkey_ti_t *ti, bool enable)
+set_mouse (termo_ti_t *ti, bool enable)
 {
 #ifdef HAVE_UNIBILIUM
 	unibi_var_t params[9] = { enable, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -355,9 +355,9 @@ set_mouse (termkey_ti_t *ti, bool enable)
 }
 
 static int
-start_driver (termkey_t *tk, void *info)
+start_driver (termo_t *tk, void *info)
 {
-	termkey_ti_t *ti = info;
+	termo_ti_t *ti = info;
 	// TODO: Don't start the mouse automatically, find a nice place to put
 	//   a public function to be called by users.
 	// TODO: Try to autodetect rxvt and use its protocol instead of mode 1000
@@ -368,9 +368,9 @@ start_driver (termkey_t *tk, void *info)
 }
 
 static int
-stop_driver (termkey_t *tk, void *info)
+stop_driver (termo_t *tk, void *info)
 {
-	termkey_ti_t *ti = info;
+	termo_ti_t *ti = info;
 	if (ti->have_mouse && !set_mouse (ti, false))
 		return false;
 	return write_string (tk, ti->stop_string);
@@ -379,7 +379,7 @@ stop_driver (termkey_t *tk, void *info)
 static void
 free_driver (void *info)
 {
-	termkey_ti_t *ti = info;
+	termo_ti_t *ti = info;
 	free_trie (ti->root);
 	free (ti->set_mouse_string);
 	free (ti->start_string);
@@ -389,14 +389,14 @@ free_driver (void *info)
 
 #define CHARAT(i) (tk->buffer[tk->buffstart + (i)])
 
-static termkey_result_t
-peekkey (termkey_t *tk, void *info,
-	termkey_key_t *key, int force, size_t *nbytep)
+static termo_result_t
+peekkey (termo_t *tk, void *info,
+	termo_key_t *key, int force, size_t *nbytep)
 {
-	termkey_ti_t *ti = info;
+	termo_ti_t *ti = info;
 
 	if (tk->buffcount == 0)
-		return tk->is_closed ? TERMKEY_RES_EOF : TERMKEY_RES_NONE;
+		return tk->is_closed ? TERMO_RES_EOF : TERMO_RES_NONE;
 
 	trie_node_t *p = ti->root;
 	unsigned int pos = 0;
@@ -415,20 +415,20 @@ peekkey (termkey_t *tk, void *info,
 			key->code.sym  = nk->key.sym;
 			key->modifiers = nk->key.modifier_set;
 			*nbytep = pos;
-			return TERMKEY_RES_KEY;
+			return TERMO_RES_KEY;
 		}
 		else if (p->type == TYPE_MOUSE)
 		{
 			tk->buffstart += pos;
 			tk->buffcount -= pos;
 
-			termkey_result_t mouse_result =
+			termo_result_t mouse_result =
 				(*tk->method.peekkey_mouse) (tk, key, nbytep);
 
 			tk->buffstart -= pos;
 			tk->buffcount += pos;
 
-			if (mouse_result == TERMKEY_RES_KEY)
+			if (mouse_result == TERMO_RES_KEY)
 				*nbytep += pos;
 
 			return mouse_result;
@@ -438,65 +438,65 @@ peekkey (termkey_t *tk, void *info,
 	// If p is not NULL then we hadn't walked off the end yet, so we have a
 	// partial match
 	if (p && !force)
-		return TERMKEY_RES_AGAIN;
+		return TERMO_RES_AGAIN;
 
-	return TERMKEY_RES_NONE;
+	return TERMO_RES_NONE;
 }
 
 static struct func
 {
 	const char *funcname;
-	termkey_type_t type;
-	termkey_sym_t sym;
+	termo_type_t type;
+	termo_sym_t sym;
 	int mods;
 }
 funcs[] =
 {
 	/* THIS LIST MUST REMAIN SORTED! */
-	{ "backspace", TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_BACKSPACE, 0 },
-	{ "begin",     TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_BEGIN,     0 },
-	{ "beg",       TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_BEGIN,     0 },
-	{ "btab",      TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_TAB,       TERMKEY_KEYMOD_SHIFT },
-	{ "cancel",    TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_CANCEL,    0 },
-	{ "clear",     TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_CLEAR,     0 },
-	{ "close",     TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_CLOSE,     0 },
-	{ "command",   TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_COMMAND,   0 },
-	{ "copy",      TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_COPY,      0 },
-	{ "dc",        TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_DELETE,    0 },
-	{ "down",      TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_DOWN,      0 },
-	{ "end",       TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_END,       0 },
-	{ "enter",     TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_ENTER,     0 },
-	{ "exit",      TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_EXIT,      0 },
-	{ "find",      TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_FIND,      0 },
-	{ "help",      TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_HELP,      0 },
-	{ "home",      TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_HOME,      0 },
-	{ "ic",        TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_INSERT,    0 },
-	{ "left",      TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_LEFT,      0 },
-	{ "mark",      TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_MARK,      0 },
-	{ "message",   TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_MESSAGE,   0 },
-	{ "mouse",     TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_NONE,      0 },
-	{ "move",      TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_MOVE,      0 },
+	{ "backspace", TERMO_TYPE_KEYSYM, TERMO_SYM_BACKSPACE, 0 },
+	{ "begin",     TERMO_TYPE_KEYSYM, TERMO_SYM_BEGIN,     0 },
+	{ "beg",       TERMO_TYPE_KEYSYM, TERMO_SYM_BEGIN,     0 },
+	{ "btab",      TERMO_TYPE_KEYSYM, TERMO_SYM_TAB,       TERMO_KEYMOD_SHIFT },
+	{ "cancel",    TERMO_TYPE_KEYSYM, TERMO_SYM_CANCEL,    0 },
+	{ "clear",     TERMO_TYPE_KEYSYM, TERMO_SYM_CLEAR,     0 },
+	{ "close",     TERMO_TYPE_KEYSYM, TERMO_SYM_CLOSE,     0 },
+	{ "command",   TERMO_TYPE_KEYSYM, TERMO_SYM_COMMAND,   0 },
+	{ "copy",      TERMO_TYPE_KEYSYM, TERMO_SYM_COPY,      0 },
+	{ "dc",        TERMO_TYPE_KEYSYM, TERMO_SYM_DELETE,    0 },
+	{ "down",      TERMO_TYPE_KEYSYM, TERMO_SYM_DOWN,      0 },
+	{ "end",       TERMO_TYPE_KEYSYM, TERMO_SYM_END,       0 },
+	{ "enter",     TERMO_TYPE_KEYSYM, TERMO_SYM_ENTER,     0 },
+	{ "exit",      TERMO_TYPE_KEYSYM, TERMO_SYM_EXIT,      0 },
+	{ "find",      TERMO_TYPE_KEYSYM, TERMO_SYM_FIND,      0 },
+	{ "help",      TERMO_TYPE_KEYSYM, TERMO_SYM_HELP,      0 },
+	{ "home",      TERMO_TYPE_KEYSYM, TERMO_SYM_HOME,      0 },
+	{ "ic",        TERMO_TYPE_KEYSYM, TERMO_SYM_INSERT,    0 },
+	{ "left",      TERMO_TYPE_KEYSYM, TERMO_SYM_LEFT,      0 },
+	{ "mark",      TERMO_TYPE_KEYSYM, TERMO_SYM_MARK,      0 },
+	{ "message",   TERMO_TYPE_KEYSYM, TERMO_SYM_MESSAGE,   0 },
+	{ "mouse",     TERMO_TYPE_KEYSYM, TERMO_SYM_NONE,      0 },
+	{ "move",      TERMO_TYPE_KEYSYM, TERMO_SYM_MOVE,      0 },
 	// Not quite, but it's the best we can do
-	{ "next",      TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_PAGEDOWN,  0 },
-	{ "npage",     TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_PAGEDOWN,  0 },
-	{ "open",      TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_OPEN,      0 },
-	{ "options",   TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_OPTIONS,   0 },
-	{ "ppage",     TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_PAGEUP,    0 },
+	{ "next",      TERMO_TYPE_KEYSYM, TERMO_SYM_PAGEDOWN,  0 },
+	{ "npage",     TERMO_TYPE_KEYSYM, TERMO_SYM_PAGEDOWN,  0 },
+	{ "open",      TERMO_TYPE_KEYSYM, TERMO_SYM_OPEN,      0 },
+	{ "options",   TERMO_TYPE_KEYSYM, TERMO_SYM_OPTIONS,   0 },
+	{ "ppage",     TERMO_TYPE_KEYSYM, TERMO_SYM_PAGEUP,    0 },
 	// Not quite, but it's the best we can do
-	{ "previous",  TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_PAGEUP,    0 },
-	{ "print",     TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_PRINT,     0 },
-	{ "redo",      TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_REDO,      0 },
-	{ "reference", TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_REFERENCE, 0 },
-	{ "refresh",   TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_REFRESH,   0 },
-	{ "replace",   TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_REPLACE,   0 },
-	{ "restart",   TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_RESTART,   0 },
-	{ "resume",    TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_RESUME,    0 },
-	{ "right",     TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_RIGHT,     0 },
-	{ "save",      TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_SAVE,      0 },
-	{ "select",    TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_SELECT,    0 },
-	{ "suspend",   TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_SUSPEND,   0 },
-	{ "undo",      TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_UNDO,      0 },
-	{ "up",        TERMKEY_TYPE_KEYSYM, TERMKEY_SYM_UP,        0 },
+	{ "previous",  TERMO_TYPE_KEYSYM, TERMO_SYM_PAGEUP,    0 },
+	{ "print",     TERMO_TYPE_KEYSYM, TERMO_SYM_PRINT,     0 },
+	{ "redo",      TERMO_TYPE_KEYSYM, TERMO_SYM_REDO,      0 },
+	{ "reference", TERMO_TYPE_KEYSYM, TERMO_SYM_REFERENCE, 0 },
+	{ "refresh",   TERMO_TYPE_KEYSYM, TERMO_SYM_REFRESH,   0 },
+	{ "replace",   TERMO_TYPE_KEYSYM, TERMO_SYM_REPLACE,   0 },
+	{ "restart",   TERMO_TYPE_KEYSYM, TERMO_SYM_RESTART,   0 },
+	{ "resume",    TERMO_TYPE_KEYSYM, TERMO_SYM_RESUME,    0 },
+	{ "right",     TERMO_TYPE_KEYSYM, TERMO_SYM_RIGHT,     0 },
+	{ "save",      TERMO_TYPE_KEYSYM, TERMO_SYM_SAVE,      0 },
+	{ "select",    TERMO_TYPE_KEYSYM, TERMO_SYM_SELECT,    0 },
+	{ "suspend",   TERMO_TYPE_KEYSYM, TERMO_SYM_SUSPEND,   0 },
+	{ "undo",      TERMO_TYPE_KEYSYM, TERMO_SYM_UNDO,      0 },
+	{ "up",        TERMO_TYPE_KEYSYM, TERMO_SYM_UP,        0 },
 	{ NULL },
 };
 
@@ -508,7 +508,7 @@ func_compare (const void *key, const void *element)
 
 static int
 funcname2keysym (const char *funcname,
-	termkey_type_t *typep, termkey_sym_t *symp, int *modmaskp, int *modsetp)
+	termo_type_t *typep, termo_sym_t *symp, int *modmaskp, int *modsetp)
 {
 	struct func *func = bsearch (funcname, funcs,
 		sizeof funcs / sizeof funcs[0], sizeof funcs[0], func_compare);
@@ -523,7 +523,7 @@ funcname2keysym (const char *funcname,
 
 	if (funcname[0] == 'f' && isdigit (funcname[1]))
 	{
-		*typep = TERMKEY_TYPE_FUNCTION;
+		*typep = TERMO_TYPE_FUNCTION;
 		*symp  = atoi (funcname + 1);
 		return 1;
 	}
@@ -532,8 +532,8 @@ funcname2keysym (const char *funcname,
 	if (funcname[0] == 's' && funcname2keysym
 		(funcname + 1, typep, symp, modmaskp, modsetp))
 	{
-		*modmaskp |= TERMKEY_KEYMOD_SHIFT;
-		*modsetp  |= TERMKEY_KEYMOD_SHIFT;
+		*modmaskp |= TERMO_KEYMOD_SHIFT;
+		*modsetp  |= TERMO_KEYMOD_SHIFT;
 		return 1;
 	}
 
@@ -546,7 +546,7 @@ funcname2keysym (const char *funcname,
 }
 
 static int
-insert_seq (termkey_ti_t *ti, const char *seq, trie_node_t *node)
+insert_seq (termo_ti_t *ti, const char *seq, trie_node_t *node)
 {
 	int pos = 0;
 	trie_node_t *p = ti->root;
@@ -603,7 +603,7 @@ insert_seq (termkey_ti_t *ti, const char *seq, trie_node_t *node)
 	return 1;
 }
 
-termkey_driver_t termkey_driver_ti =
+termo_driver_t termo_driver_ti =
 {
 	.name         = "terminfo",
 	.new_driver   = new_driver,

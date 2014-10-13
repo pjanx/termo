@@ -4,5 +4,5 @@
 #    @project_CMAKE_NAME@_LIBRARIES
 
 set (@project_CMAKE_NAME@_INCLUDE_DIRS @CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_INCLUDEDIR@/@project_INCLUDE_NAME@)
-set (@project_CMAKE_NAME@_LIBRARIES termkey2)
+set (@project_CMAKE_NAME@_LIBRARIES termo)
 

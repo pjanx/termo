@@ -6,13 +6,13 @@
 #include <unistd.h>
 #include <locale.h>
 
-#include "termkey2.h"
+#include "termo.h"
 
 static void
-on_key (termkey_t *tk, termkey_key_t *key)
+on_key (termo_t *tk, termo_key_t *key)
 {
 	char buffer[50];
-	termkey_strfkey (tk, buffer, sizeof buffer, key, TERMKEY_FORMAT_VIM);
+	termo_strfkey (tk, buffer, sizeof buffer, key, TERMO_FORMAT_VIM);
 	printf ("%s\n", buffer);
 }
 
@@ -22,23 +22,23 @@ main (int argc, char *argv[])
 	(void) argc;
 	(void) argv;
 
-	TERMKEY_CHECK_VERSION;
+	TERMO_CHECK_VERSION;
 	setlocale (LC_CTYPE, "");
 
-	termkey_t *tk = termkey_new (STDIN_FILENO, NULL, 0);
+	termo_t *tk = termo_new (STDIN_FILENO, NULL, 0);
 
 	if (!tk)
 	{
-		fprintf (stderr, "Cannot allocate termkey instance\n");
+		fprintf (stderr, "Cannot allocate termo instance\n");
 		exit (1);
 	}
 
 	struct pollfd fd;
-	fd.fd = STDIN_FILENO; /* the file descriptor we passed to termkey_new() */
+	fd.fd = STDIN_FILENO; /* the file descriptor we passed to termo_new() */
 	fd.events = POLLIN;
 
-	termkey_result_t ret;
-	termkey_key_t key;
+	termo_result_t ret;
+	termo_key_t key;
 
 	int running = 1;
 	int nextwait = -1;
@@ -47,27 +47,27 @@ main (int argc, char *argv[])
 	{
 		if (poll (&fd, 1, nextwait) == 0)
 			// Timed out
-			if (termkey_getkey_force (tk, &key) == TERMKEY_RES_KEY)
+			if (termo_getkey_force (tk, &key) == TERMO_RES_KEY)
 				on_key (tk, &key);
 
 		if (fd.revents & (POLLIN | POLLHUP | POLLERR))
-			termkey_advisereadable (tk);
+			termo_advisereadable (tk);
 
-		while ((ret = termkey_getkey (tk, &key)) == TERMKEY_RES_KEY)
+		while ((ret = termo_getkey (tk, &key)) == TERMO_RES_KEY)
 		{
 			on_key (tk, &key);
 
-			if (key.type == TERMKEY_TYPE_KEY
-			 && (key.modifiers & TERMKEY_KEYMOD_CTRL)
+			if (key.type == TERMO_TYPE_KEY
+			 && (key.modifiers & TERMO_KEYMOD_CTRL)
 			 && (key.code.codepoint == 'C' || key.code.codepoint == 'c'))
 				running = 0;
 		}
 
-		if (ret == TERMKEY_RES_AGAIN)
-			nextwait = termkey_get_waittime (tk);
+		if (ret == TERMO_RES_AGAIN)
+			nextwait = termo_get_waittime (tk);
 		else
 			nextwait = -1;
 	}
 
-	termkey_destroy (tk);
+	termo_destroy (tk);
 }
