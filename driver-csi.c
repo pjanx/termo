@@ -221,12 +221,12 @@ handle_csi_m (termkey_t *tk, termkey_key_t *key, int cmd, long *arg, int args)
 	{
 		// rxvt protocol
 		key->type = TERMKEY_TYPE_MOUSE;
-		key->code.mouse[0] = arg[0];
+		key->code.mouse.info = arg[0] - 0x20;
 
-		key->modifiers = (key->code.mouse[0] & 0x1c) >> 2;
-		key->code.mouse[0] &= ~0x1c;
+		key->modifiers = (key->code.mouse.info & 0x1c) >> 2;
+		key->code.mouse.info &= ~0x1c;
 
-		termkey_key_set_linecol (key, arg[1], arg[2]);
+		termkey_key_set_linecol (key, arg[2] - 1, arg[1] - 1);
 		return TERMKEY_RES_KEY;
 	}
 
@@ -234,15 +234,15 @@ handle_csi_m (termkey_t *tk, termkey_key_t *key, int cmd, long *arg, int args)
 	{
 		// SGR protocol
 		key->type = TERMKEY_TYPE_MOUSE;
-		key->code.mouse[0] = arg[0];
+		key->code.mouse.info = arg[0];
 
-		key->modifiers = (key->code.mouse[0] & 0x1c) >> 2;
-		key->code.mouse[0] &= ~0x1c;
+		key->modifiers = (key->code.mouse.info & 0x1c) >> 2;
+		key->code.mouse.info &= ~0x1c;
 
-		termkey_key_set_linecol (key, arg[1], arg[2]);
+		termkey_key_set_linecol (key, arg[2] - 1, arg[1] - 1);
 
 		if (cmd == 'm')  // release
-			key->code.mouse[3] |= 0x80;
+			key->code.mouse.info |= 0x8000;
 		return TERMKEY_RES_KEY;
 	}
 	return TERMKEY_RES_NONE;
@@ -267,7 +267,7 @@ termkey_interpret_mouse (termkey_t *tk, const termkey_key_t *key,
 		return TERMKEY_RES_KEY;
 
 	int btn = 0;
-	int code = key->code.mouse[0];
+	int code = key->code.mouse.info;
 	int drag = code & 0x20;
 	code &= ~0x3c;
 
@@ -297,7 +297,7 @@ termkey_interpret_mouse (termkey_t *tk, const termkey_key_t *key,
 
 	if (button)
 		*button = btn;
-	if (key->code.mouse[3] & 0x80)
+	if (key->code.mouse.info & 0x8000)
 		*event = TERMKEY_MOUSE_RELEASE;
 	return TERMKEY_RES_KEY;
 }
@@ -355,10 +355,9 @@ handle_csi_y (termkey_t *tk, termkey_key_t *key, int cmd, long *arg, int args)
 			return TERMKEY_RES_NONE;
 
 		key->type = TERMKEY_TYPE_MODEREPORT;
-		key->code.mouse[0] = (cmd >> 8);
-		key->code.mouse[1] = arg[0] >> 8;
-		key->code.mouse[2] = arg[0] & 0xff;
-		key->code.mouse[3] = arg[1];
+		key->code.mode.initial = (cmd >> 8);
+		key->code.mode.mode = arg[0];
+		key->code.mode.value = arg[1];
 		return TERMKEY_RES_KEY;
 
 	default:
@@ -376,11 +375,11 @@ termkey_interpret_modereport (termkey_t *tk,
 		return TERMKEY_RES_NONE;
 
 	if (initial)
-		*initial = key->code.mouse[0];
+		*initial = key->code.mode.initial;
 	if (mode)
-		*mode = (key->code.mouse[1] << 8) | key->code.mouse[2];
+		*mode = key->code.mode.mode;
 	if (value)
-		*value = key->code.mouse[3];
+		*value = key->code.mode.value;
 	return TERMKEY_RES_KEY;
 }
 
@@ -616,7 +615,7 @@ peekkey_csi (termkey_t *tk, termkey_csi_t *csi,
 		return TERMKEY_RES_KEY;
 	}
 
-	// Mouse in X10 encoding consumes the next 3 bytes also
+	// Mouse in X10 encoding consumes the next 3 bytes also (or more with 1005)
 	if (cmd == 'M' && args < 3)
 	{
 		tk->buffstart += csi_len;

@@ -966,22 +966,121 @@ peekkey_simple (termkey_t *tk, termkey_key_t *key, int force, size_t *nbytep)
 	}
 }
 
+// XXX: With the current infrastructure I'm not sure how to properly handle
+//   this.  peekkey() isn't made for skipping invalid inputs.
+#define INVALID_1005 0x20
+
+static termkey_result_t
+parse_1005_value (const unsigned char **bytes, size_t *len, uint32_t *cp)
+{
+	unsigned int nbytes;
+	unsigned char b0 = (*bytes)[0];
+	if (b0 < 0x80)
+	{
+		// Single byte ASCII
+		*cp = b0;
+		nbytes = 1;
+		goto end;
+	}
+	else if (b0 < 0xc0)
+	{
+		// Starts with a continuation byte - that's not right
+		*cp = INVALID_1005;
+		nbytes = 1;
+		goto end;
+	}
+	else if (b0 < 0xe0)
+	{
+		nbytes = 2;
+		*cp = b0 & 0x1f;
+	}
+	else if (b0 < 0xf0)
+	{
+		nbytes = 3;
+		*cp = b0 & 0x0f;
+	}
+	else if (b0 < 0xf8)
+	{
+		nbytes = 4;
+		*cp = b0 & 0x07;
+	}
+	else if (b0 < 0xfc)
+	{
+		nbytes = 5;
+		*cp = b0 & 0x03;
+	}
+	else if (b0 < 0xfe)
+	{
+		nbytes = 6;
+		*cp = b0 & 0x01;
+	}
+	else
+	{
+		*cp = INVALID_1005;
+		nbytes = 1;
+		goto end;
+	}
+
+	for (unsigned int b = 1; b < nbytes; b++)
+	{
+		if (b >= *len)
+			return TERMKEY_RES_AGAIN;
+
+		unsigned char cb = (*bytes)[b];
+		if (cb < 0x80 || cb >= 0xc0)
+		{
+			*cp = INVALID_1005;
+			nbytes = b;
+			goto end;
+		}
+		*cp <<= 6;
+		*cp |= cb & 0x3f;
+	}
+
+end:
+	(*bytes) += nbytes;
+	(*len) -= nbytes;
+	return TERMKEY_RES_KEY;
+}
+
 static termkey_result_t
 peekkey_mouse (termkey_t *tk, termkey_key_t *key, size_t *nbytep)
 {
-	if (tk->buffcount < 3)
-		return TERMKEY_RES_AGAIN;
+	uint32_t b, x, y;
+
+	// TODO: Add some API to switch on 1005 mode support
+	if (false)
+	{
+		const unsigned char *buff = tk->buffer + tk->buffstart;
+		size_t len = tk->buffcount;
+
+		if (parse_1005_value (&buff, &len, &b) == TERMKEY_RES_AGAIN
+		 || parse_1005_value (&buff, &len, &x) == TERMKEY_RES_AGAIN
+		 || parse_1005_value (&buff, &len, &y) == TERMKEY_RES_AGAIN)
+			return TERMKEY_RES_AGAIN;
+
+		*nbytep = tk->buffcount - len;
+	}
+	else
+	{
+		if (tk->buffcount < 3)
+			return TERMKEY_RES_AGAIN;
+
+		b = CHARAT (0);
+		x = CHARAT (1);
+		y = CHARAT (2);
+
+		*nbytep = 3;
+	}
 
 	key->type = TERMKEY_TYPE_MOUSE;
-	key->code.mouse[0] = CHARAT (0) - 0x20;
-	key->code.mouse[1] = CHARAT (1) - 0x20;
-	key->code.mouse[2] = CHARAT (2) - 0x20;
-	key->code.mouse[3] = 0;
+	key->code.mouse.info = b - 0x20;
+	key->code.mouse.x = x - 0x20 - 1;
+	key->code.mouse.y = y - 0x20 - 1;
 
-	key->modifiers = (key->code.mouse[0] & 0x1c) >> 2;
-	key->code.mouse[0] &= ~0x1c;
+	key->modifiers = (key->code.mouse.info & 0x1c) >> 2;
+	key->code.mouse.info &= ~0x1c;
 
-	*nbytep = 3;
 	return TERMKEY_RES_KEY;
 }
 
@@ -1525,7 +1624,8 @@ termkey_keycmp (termkey_t *tk,
 		break;
 	case TERMKEY_TYPE_MOUSE:
 	{
-		int cmp = strncmp (key1.code.mouse, key2.code.mouse, 4);
+		int cmp = memcmp (&key1.code.mouse, &key2.code.mouse,
+			sizeof key1.code.mouse);
 		if (cmp != 0)
 			return cmp;
 		break;
