@@ -1,14 +1,14 @@
 #include <stdio.h>
 #include <errno.h>
-#include "../termkey.h"
+#include "../termo.h"
 #include "taplib.h"
 
 int
 main (int argc, char *argv[])
 {
 	int fd[2];
-	termkey_t *tk;
-	termkey_key_t key;
+	termo_t *tk;
+	termo_key_t key;
 
 	plan_tests (21);
 
@@ -19,67 +19,67 @@ main (int argc, char *argv[])
 	/* Sanitise this just in case */
 	putenv ("TERM=vt100");
 
-	tk = termkey_new (fd[0], NULL, TERMKEY_FLAG_NOTERMIOS);
+	tk = termo_new (fd[0], NULL, TERMO_FLAG_NOTERMIOS);
 
-	is_int (termkey_get_buffer_remaining (tk), 256,
+	is_int (termo_get_buffer_remaining (tk), 256,
 		"buffer free initially 256");
 
-	is_int (termkey_getkey (tk, &key), TERMKEY_RES_NONE,
+	is_int (termo_getkey (tk, &key), TERMO_RES_NONE,
 		"getkey yields RES_NONE when empty");
 
 	write (fd[1], "h", 1);
 
-	is_int (termkey_getkey (tk, &key), TERMKEY_RES_NONE,
+	is_int (termo_getkey (tk, &key), TERMO_RES_NONE,
 		"getkey yields RES_NONE before advisereadable");
 
-	is_int (termkey_advisereadable (tk), TERMKEY_RES_AGAIN,
+	is_int (termo_advisereadable (tk), TERMO_RES_AGAIN,
 		"advisereadable yields RES_AGAIN after h");
 
-	is_int (termkey_get_buffer_remaining (tk), 255,
+	is_int (termo_get_buffer_remaining (tk), 255,
 		"buffer free 255 after advisereadable");
 
-	is_int (termkey_getkey (tk, &key), TERMKEY_RES_KEY,
+	is_int (termo_getkey (tk, &key), TERMO_RES_KEY,
 		"getkey yields RES_KEY after h");
 
-	is_int (key.type, TERMKEY_TYPE_KEY, "key.type after h");
+	is_int (key.type, TERMO_TYPE_KEY, "key.type after h");
 	is_int (key.code.codepoint, 'h', "key.code.codepoint after h");
 	is_int (key.modifiers, 0, "key.modifiers after h");
 	is_str (key.multibyte, "h", "key.multibyte after h");
 
-	is_int (termkey_get_buffer_remaining (tk), 256,
+	is_int (termo_get_buffer_remaining (tk), 256,
 		"buffer free 256 after getkey");
 
-	is_int (termkey_getkey (tk, &key), TERMKEY_RES_NONE,
+	is_int (termo_getkey (tk, &key), TERMO_RES_NONE,
 		"getkey yields RES_NONE a second time");
 
 	write (fd[1], "\033O", 2);
-	termkey_advisereadable (tk);
+	termo_advisereadable (tk);
 
-	is_int (termkey_get_buffer_remaining (tk), 254,
+	is_int (termo_get_buffer_remaining (tk), 254,
 		"buffer free 254 after partial write");
 
-	is_int (termkey_getkey (tk, &key), TERMKEY_RES_AGAIN,
+	is_int (termo_getkey (tk, &key), TERMO_RES_AGAIN,
 		"getkey yields RES_AGAIN after partial write");
 
 	write (fd[1], "C", 1);
-	termkey_advisereadable (tk);
+	termo_advisereadable (tk);
 
-	is_int (termkey_getkey (tk, &key), TERMKEY_RES_KEY,
+	is_int (termo_getkey (tk, &key), TERMO_RES_KEY,
 		"getkey yields RES_KEY after Right completion");
 
-	is_int (key.type, TERMKEY_TYPE_KEYSYM, "key.type after Right");
-	is_int (key.code.sym, TERMKEY_SYM_RIGHT, "key.code.sym after Right");
+	is_int (key.type, TERMO_TYPE_KEYSYM, "key.type after Right");
+	is_int (key.code.sym, TERMO_SYM_RIGHT, "key.code.sym after Right");
 	is_int (key.modifiers, 0, "key.modifiers after Right");
 
-	is_int (termkey_get_buffer_remaining (tk), 256,
+	is_int (termo_get_buffer_remaining (tk), 256,
 		"buffer free 256 after completion");
 
-	termkey_stop (tk);
+	termo_stop (tk);
 
-	is_int (termkey_getkey (tk, &key), TERMKEY_RES_ERROR,
-		"getkey yields RES_ERROR after termkey_stop ()");
+	is_int (termo_getkey (tk, &key), TERMO_RES_ERROR,
+		"getkey yields RES_ERROR after termo_stop ()");
 	is_int (errno, EINVAL, "getkey error is EINVAL");
 
-	termkey_destroy (tk);
+	termo_destroy (tk);
 	return exit_status ();
 }

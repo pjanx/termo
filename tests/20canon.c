@@ -1,11 +1,11 @@
-#include "../termkey.h"
+#include "../termo.h"
 #include "taplib.h"
 
 int
 main (int argc, char *argv[])
 {
-	termkey_t *tk;
-	termkey_key_t key;
+	termo_t *tk;
+	termo_key_t key;
 	const char *endp;
 
 #define CLEAR_KEY do { key.type = -1; key.code.codepoint = -1; \
@@ -13,62 +13,62 @@ main (int argc, char *argv[])
 
 	plan_tests (26);
 
-	tk = termkey_new_abstract ("vt100", NULL, 0);
+	tk = termo_new_abstract ("vt100", NULL, 0);
 
 	CLEAR_KEY;
-	endp = termkey_strpkey (tk, " ", &key, 0);
-	is_int (key.type, TERMKEY_TYPE_KEY, "key.type for SP/unicode");
+	endp = termo_strpkey (tk, " ", &key, 0);
+	is_int (key.type, TERMO_TYPE_KEY, "key.type for SP/unicode");
 	is_int (key.code.codepoint, ' ', "key.code.codepoint for SP/unicode");
 	is_int (key.modifiers, 0, "key.modifiers for SP/unicode");
 	is_str (key.multibyte, " ", "key.multibyte for SP/unicode");
 	is_str (endp, "", "consumed entire input for SP/unicode");
 
 	CLEAR_KEY;
-	endp = termkey_strpkey (tk, "Space", &key, 0);
-	is_int (key.type, TERMKEY_TYPE_KEY, "key.type for Space/unicode");
+	endp = termo_strpkey (tk, "Space", &key, 0);
+	is_int (key.type, TERMO_TYPE_KEY, "key.type for Space/unicode");
 	is_int (key.code.codepoint, ' ', "key.code.codepoint for Space/unicode");
 	is_int (key.modifiers, 0, "key.modifiers for Space/unicode");
 	is_str (key.multibyte, " ", "key.multibyte for Space/unicode");
 	is_str (endp, "", "consumed entire input for Space/unicode");
 
-	termkey_set_canonflags (tk,
-		termkey_get_canonflags (tk) | TERMKEY_CANON_SPACESYMBOL);
+	termo_set_canonflags (tk,
+		termo_get_canonflags (tk) | TERMO_CANON_SPACESYMBOL);
 
 	CLEAR_KEY;
-	endp = termkey_strpkey (tk, " ", &key, 0);
-	is_int (key.type, TERMKEY_TYPE_KEYSYM, "key.type for SP/symbol");
-	is_int (key.code.sym, TERMKEY_SYM_SPACE,
+	endp = termo_strpkey (tk, " ", &key, 0);
+	is_int (key.type, TERMO_TYPE_KEYSYM, "key.type for SP/symbol");
+	is_int (key.code.sym, TERMO_SYM_SPACE,
 		"key.code.codepoint for SP/symbol");
 	is_int (key.modifiers, 0, "key.modifiers for SP/symbol");
 	is_str (endp, "", "consumed entire input for SP/symbol");
 
 	CLEAR_KEY;
-	endp = termkey_strpkey (tk, "Space", &key, 0);
-	is_int (key.type, TERMKEY_TYPE_KEYSYM, "key.type for Space/symbol");
-	is_int (key.code.sym, TERMKEY_SYM_SPACE,
+	endp = termo_strpkey (tk, "Space", &key, 0);
+	is_int (key.type, TERMO_TYPE_KEYSYM, "key.type for Space/symbol");
+	is_int (key.code.sym, TERMO_SYM_SPACE,
 		"key.code.codepoint for Space/symbol");
 	is_int (key.modifiers, 0, "key.modifiers for Space/symbol");
 	is_str (endp, "", "consumed entire input for Space/symbol");
 
 	CLEAR_KEY;
-	endp = termkey_strpkey (tk, "DEL", &key, 0);
-	is_int (key.type, TERMKEY_TYPE_KEYSYM, "key.type for Del/unconverted");
-	is_int (key.code.sym, TERMKEY_SYM_DEL,
+	endp = termo_strpkey (tk, "DEL", &key, 0);
+	is_int (key.type, TERMO_TYPE_KEYSYM, "key.type for Del/unconverted");
+	is_int (key.code.sym, TERMO_SYM_DEL,
 		"key.code.codepoint for Del/unconverted");
 	is_int (key.modifiers, 0, "key.modifiers for Del/unconverted");
 	is_str (endp, "", "consumed entire input for Del/unconverted");
 
-	termkey_set_canonflags (tk,
-		termkey_get_canonflags (tk) | TERMKEY_CANON_DELBS);
+	termo_set_canonflags (tk,
+		termo_get_canonflags (tk) | TERMO_CANON_DELBS);
 
 	CLEAR_KEY;
-	endp = termkey_strpkey (tk, "DEL", &key, 0);
-	is_int (key.type, TERMKEY_TYPE_KEYSYM, "key.type for Del/as-backspace");
-	is_int (key.code.sym, TERMKEY_SYM_BACKSPACE,
+	endp = termo_strpkey (tk, "DEL", &key, 0);
+	is_int (key.type, TERMO_TYPE_KEYSYM, "key.type for Del/as-backspace");
+	is_int (key.code.sym, TERMO_SYM_BACKSPACE,
 		"key.code.codepoint for Del/as-backspace");
 	is_int (key.modifiers, 0, "key.modifiers for Del/as-backspace");
 	is_str (endp, "", "consumed entire input for Del/as-backspace");
 
-	termkey_destroy (tk);
+	termo_destroy (tk);
 	return exit_status ();
 }

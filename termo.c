@@ -113,7 +113,7 @@ keynames[] =
 	{ TERMO_SYM_KPCOMMA,   "KPComma"   },
 	{ TERMO_SYM_KPPERIOD,  "KPPeriod"  },
 	{ TERMO_SYM_KPEQUALS,  "KPEquals"  },
-	{ 0,                      NULL       },
+	{ 0,                   NULL       },
 };
 
 #define CHARAT(i) (tk->buffer[tk->buffstart + (i)])
