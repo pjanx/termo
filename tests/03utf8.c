@@ -18,8 +18,8 @@ main (int argc, char *argv[])
 	is_int (key.type, TERMO_TYPE_KEY, "key.type low ASCII");
 	is_int (key.code.codepoint, 'a', "key.code.codepoint low ASCII");
 
-	/* 2-byte UTF-8 range is U+0080 to U+07FF (0xDF 0xBF) */
-	/* However, we'd best avoid the C1 range, so we'll start at U+00A0 (0xC2 0xA0) */
+	// 2-byte UTF-8 range is U+0080 to U+07FF (0xDF 0xBF)
+	// However, we'd best avoid the C1 range, so we'll start at U+00A0 (0xC2 0xA0)
 
 	termo_push_bytes (tk, "\xC2\xA0", 2);
 
@@ -35,7 +35,7 @@ main (int argc, char *argv[])
 	is_int (key.type, TERMO_TYPE_KEY, "key.type UTF-8 2 high");
 	is_int (key.code.codepoint, 0x07FF, "key.code.codepoint UTF-8 2 high");
 
-	/* 3-byte UTF-8 range is U+0800 (0xE0 0xA0 0x80) to U+FFFD (0xEF 0xBF 0xBD) */
+	// 3-byte UTF-8 range is U+0800 (0xE0 0xA0 0x80) to U+FFFD (0xEF 0xBF 0xBD)
 
 	termo_push_bytes (tk, "\xE0\xA0\x80", 3);
 
@@ -51,7 +51,7 @@ main (int argc, char *argv[])
 	is_int (key.type, TERMO_TYPE_KEY, "key.type UTF-8 3 high");
 	is_int (key.code.codepoint, 0xFFFD, "key.code.codepoint UTF-8 3 high");
 
-	/* 4-byte UTF-8 range is U+10000 (0xF0 0x90 0x80 0x80) to U+10FFFF (0xF4 0x8F 0xBF 0xBF) */
+	// 4-byte UTF-8 range is U+10000 (0xF0 0x90 0x80 0x80) to U+10FFFF (0xF4 0x8F 0xBF 0xBF)
 
 	termo_push_bytes (tk, "\xF0\x90\x80\x80", 4);
 
@@ -68,9 +68,9 @@ main (int argc, char *argv[])
 	is_int (key.code.codepoint, 0x10FFFF, "key.code.codepoint UTF-8 4 high");
 
 #if 0
-	/* XXX: With the move to iconv, this has changed significantly. */
+	// XXX: With the move to iconv, this has changed significantly.
 
-	/* Invalid continuations */
+	// Invalid continuations
 
 	termo_push_bytes (tk, "\xC2!", 2);
 
@@ -139,7 +139,7 @@ main (int argc, char *argv[])
 		"key.code.codepoint UTF-8 4 invalid after");
 #endif
 
-	/* Partials */
+	// Partials
 
 	termo_push_bytes (tk, "\xC2", 1);
 	is_int (termo_getkey (tk, &key), TERMO_RES_AGAIN,

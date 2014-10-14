@@ -24,7 +24,7 @@ int main (int argc, char *argv[])
 	is_int (line, 15, "line for position report");
 	is_int (col, 7, "column for position report");
 
-	/* A plain CSI R is likely to be <F3> though.  This is tricky :/ */
+	// A plain CSI R is likely to be <F3> though.  This is tricky :/
 	termo_push_bytes (tk, "\e[R", 3);
 
 	is_int (termo_getkey (tk, &key), TERMO_RES_KEY,

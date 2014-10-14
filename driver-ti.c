@@ -16,11 +16,10 @@
 #include <string.h>
 #include <unistd.h>
 
-/* To be efficient at lookups, we store the byte sequence => keyinfo mapping
- * in a trie. This avoids a slow linear search through a flat list of
- * sequences. Because it is likely most nodes will be very sparse, we optimise
- * vector to store an extent map after the database is loaded.
- */
+// To be efficient at lookups, we store the byte sequence => keyinfo mapping
+// in a trie. This avoids a slow linear search through a flat list of
+// sequences. Because it is likely most nodes will be very sparse, we optimise
+// vector to store an extent map after the database is loaded.
 
 typedef enum
 {
@@ -46,8 +45,8 @@ trie_node_key_t;
 typedef struct trie_node_array
 {
 	trie_nodetype_t type;
-	unsigned char min, max; /* INCLUSIVE endpoints of the extent range */
-	trie_node_t *arr[]; /* dynamic size at allocation time */
+	unsigned char min, max; // INCLUSIVE endpoints of the extent range
+	trie_node_t *arr[];     // dynamic size at allocation time
 }
 trie_node_array_t;
 
@@ -190,8 +189,8 @@ load_terminfo (termo_ti_t *ti, const char *term)
 		const char *name = unibi_name_str (i);
 		const char *value = unibi_get_str (unibi, i);
 #else
-	/* Have to cast away the const. But it's OK - we know terminfo won't
-	 * really modify term */
+	// Have to cast away the const. But it's OK - we know terminfo won't
+	// really modify term
 	int err;
 	if (setupterm ((char *) term, 1, &err) != OK)
 		return false;
@@ -262,10 +261,9 @@ load_terminfo (termo_ti_t *ti, const char *term)
 		}
 	}
 
-	/* Take copies of these terminfo strings, in case we build multiple termo
-	 * instances for multiple different termtypes, and it's different by the
-	 * time we want to use it
-	 */
+	// Take copies of these terminfo strings, in case we build multiple termo
+	// instances for multiple different termtypes, and it's different by the
+	// time we want to use it
 #ifdef HAVE_UNIBILIUM
 	const char *keypad_xmit = unibi_get_str (unibi, unibi_pkey_xmit);
 #endif
@@ -452,7 +450,7 @@ static struct func
 }
 funcs[] =
 {
-	/* THIS LIST MUST REMAIN SORTED! */
+	// THIS LIST MUST REMAIN SORTED!
 	{ "backspace", TERMO_TYPE_KEYSYM, TERMO_SYM_BACKSPACE, 0 },
 	{ "begin",     TERMO_TYPE_KEYSYM, TERMO_SYM_BEGIN,     0 },
 	{ "beg",       TERMO_TYPE_KEYSYM, TERMO_SYM_BEGIN,     0 },

@@ -34,7 +34,7 @@ main (int argc, char *argv[])
 	}
 
 	struct pollfd fd;
-	fd.fd = STDIN_FILENO; /* the file descriptor we passed to termo_new() */
+	fd.fd = STDIN_FILENO; // the file descriptor we passed to termo_new()
 	fd.events = POLLIN;
 
 	termo_result_t ret;

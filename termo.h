@@ -16,17 +16,17 @@ enum termo_sym
 	TERMO_SYM_UNKNOWN = -1,
 	TERMO_SYM_NONE = 0,
 
-	/* Special names in C0 */
+	// Special names in C0
 	TERMO_SYM_BACKSPACE,
 	TERMO_SYM_TAB,
 	TERMO_SYM_ENTER,
 	TERMO_SYM_ESCAPE,
 
-	/* Special names in G0 */
+	// Special names in G0
 	TERMO_SYM_SPACE,
 	TERMO_SYM_DEL,
 
-	/* Special keys */
+	// Special keys
 	TERMO_SYM_UP,
 	TERMO_SYM_DOWN,
 	TERMO_SYM_LEFT,
@@ -41,7 +41,7 @@ enum termo_sym
 	TERMO_SYM_HOME,
 	TERMO_SYM_END,
 
-	/* Special keys from terminfo */
+	// Special keys from terminfo
 	TERMO_SYM_CANCEL,
 	TERMO_SYM_CLEAR,
 	TERMO_SYM_CLOSE,
@@ -65,7 +65,7 @@ enum termo_sym
 	TERMO_SYM_SUSPEND,
 	TERMO_SYM_UNDO,
 
-	/* Numeric keypad special keys */
+	// Numeric keypad special keys
 	TERMO_SYM_KP0,
 	TERMO_SYM_KP1,
 	TERMO_SYM_KP2,
@@ -97,7 +97,7 @@ enum termo_type
 	TERMO_TYPE_MOUSE,
 	TERMO_TYPE_POSITION,
 	TERMO_TYPE_MODEREPORT,
-	/* add other recognised types here */
+	// add other recognised types here
 
 	TERMO_TYPE_UNKNOWN_CSI = -1
 };
@@ -134,22 +134,22 @@ struct termo_key
 	termo_type_t type;
 	union
 	{
-		uint32_t      codepoint; /* TERMO_TYPE_KEY */
-		int           number;    /* TERMO_TYPE_FUNCTION */
-		termo_sym_t sym;       /* TERMO_TYPE_KEYSYM */
+		uint32_t    codepoint; // TERMO_TYPE_KEY
+		int         number;    // TERMO_TYPE_FUNCTION
+		termo_sym_t sym;       // TERMO_TYPE_KEYSYM
 
-		/* TERMO_TYPE_MODEREPORT */
-		/* opaque, see termo_interpret_modereport() */
+		// TERMO_TYPE_MODEREPORT
+		// opaque, see termo_interpret_modereport()
 		struct { char initial; int mode, value; } mode;
 
-		/* TERMO_TYPE_MOUSE */
-		/* opaque, see termo_interpret_mouse() */
+		// TERMO_TYPE_MOUSE
+		// opaque, see termo_interpret_mouse()
 		struct { uint16_t x, y, info; } mouse;
 	} code;
 
 	int modifiers;
 
-	/* The raw multibyte sequence for the key */
+	// The raw multibyte sequence for the key
 	char multibyte[MB_LEN_MAX + 1];
 };
 
@@ -157,26 +157,26 @@ typedef struct termo termo_t;
 
 enum
 {
-	/* Do not interpret C0//DEL codes if possible */
+	// Do not interpret C0//DEL codes if possible
 	TERMO_FLAG_NOINTERPRET = 1 << 0,
-	/* Convert KP codes to regular keypresses */
+	// Convert KP codes to regular keypresses
 	TERMO_FLAG_CONVERTKP   = 1 << 1,
-	/* Don't try to decode the input characters */
+	// Don't try to decode the input characters
 	TERMO_FLAG_RAW         = 1 << 2,
-	/* Do not make initial termios calls on construction */
+	// Do not make initial termios calls on construction
 	TERMO_FLAG_NOTERMIOS   = 1 << 4,
-	/* Sets TERMO_CANON_SPACESYMBOL */
+	// Sets TERMO_CANON_SPACESYMBOL
 	TERMO_FLAG_SPACESYMBOL = 1 << 5,
-	/* Allow Ctrl-C to be read as normal, disabling SIGINT */
+	// Allow Ctrl-C to be read as normal, disabling SIGINT
 	TERMO_FLAG_CTRLC       = 1 << 6,
-	/* Return ERROR on signal (EINTR) rather than retry */
+	// Return ERROR on signal (EINTR) rather than retry
 	TERMO_FLAG_EINTR       = 1 << 7
 };
 
 enum
 {
-	TERMO_CANON_SPACESYMBOL = 1 << 0, /* Space is symbolic rather than Unicode */
-	TERMO_CANON_DELBS       = 1 << 1  /* Del is converted to Backspace */
+	TERMO_CANON_SPACESYMBOL = 1 << 0, // Space is symbolic rather than Unicode
+	TERMO_CANON_DELBS       = 1 << 1  // Del is converted to Backspace
 };
 
 void termo_check_version (int major, int minor);
@@ -238,25 +238,25 @@ termo_result_t termo_interpret_csi (termo_t *tk,
 typedef enum termo_format termo_format_t;
 enum termo_format
 {
-	/* Shift-... instead of S-... */
+	// Shift-... instead of S-...
 	TERMO_FORMAT_LONGMOD     = 1 << 0,
-	/* ^X instead of C-X */
+	// ^X instead of C-X
 	TERMO_FORMAT_CARETCTRL   = 1 << 1,
-	/* Meta- or M- instead of Alt- or A- */
+	// Meta- or M- instead of Alt- or A-
 	TERMO_FORMAT_ALTISMETA   = 1 << 2,
-	/* Wrap special keys in brackets like <Escape> */
+	// Wrap special keys in brackets like <Escape>
 	TERMO_FORMAT_WRAPBRACKET = 1 << 3,
-	/* M Foo instead of M-Foo */
+	// M Foo instead of M-Foo
 	TERMO_FORMAT_SPACEMOD    = 1 << 4,
-	/* meta or m instead of Meta or M */
+	// meta or m instead of Meta or M
 	TERMO_FORMAT_LOWERMOD    = 1 << 5,
-	/* page down instead of PageDown */
+	// page down instead of PageDown
 	TERMO_FORMAT_LOWERSPACE  = 1 << 6,
-	/* Include mouse position if relevant; @ col,line */
+	// Include mouse position if relevant; @ col,line
 	TERMO_FORMAT_MOUSE_POS   = 1 << 8
 };
 
-/* Some useful combinations */
+// Some useful combinations
 
 #define TERMO_FORMAT_VIM (termo_format_t) \
 	(TERMO_FORMAT_ALTISMETA | TERMO_FORMAT_WRAPBRACKET)

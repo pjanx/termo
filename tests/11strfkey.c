@@ -118,8 +118,8 @@ main (int argc, char *argv[])
 	is_int (len, 7, "length for sym/PageUp/0 lowerspace");
 	is_str (buffer, "page up", "buffer for sym/PageUp/0 lowerspace");
 
-	/* If size of buffer is too small,
-	 * strfkey should return something consistent */
+	// If size of buffer is too small,
+	// strfkey should return something consistent
 	len = termo_strfkey (tk, buffer, 4, &key, 0);
 	is_int (len, 6, "length for sym/PageUp/0");
 	is_str (buffer, "Pag", "buffer of len 4 for sym/PageUp/0");

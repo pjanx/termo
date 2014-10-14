@@ -12,11 +12,10 @@ main (int argc, char *argv[])
 
 	plan_tests (21);
 
-	/* We'll need a real filehandle we can write/read.
-	 * pipe () can make us one */
+	// We'll need a real filehandle we can write/read.  pipe() can make us one
 	pipe (fd);
 
-	/* Sanitise this just in case */
+	// Sanitise this just in case
 	putenv ("TERM=vt100");
 
 	tk = termo_new (fd[0], NULL, TERMO_FLAG_NOTERMIOS);

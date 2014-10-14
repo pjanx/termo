@@ -119,7 +119,7 @@ keynames[] =
 #define CHARAT(i) (tk->buffer[tk->buffstart + (i)])
 
 #ifdef DEBUG
-/* Some internal deubgging functions */
+// Some internal deubgging functions
 
 static void
 print_buffer (termo_t *tk)
@@ -208,9 +208,8 @@ res2str (termo_result_t res)
 }
 #endif
 
-/* Similar to snprintf(str, size, "%s", src) except it turns CamelCase into
- * space separated values
- */
+// Similar to snprintf(str, size, "%s", src) except it turns CamelCase into
+// space separated values
 static int
 snprint_cameltospaces (char *str, size_t size, const char *src)
 {
@@ -230,8 +229,8 @@ snprint_cameltospaces (char *str, size_t size, const char *src)
 	}
 	str[l] = 0;
 
-	/* For consistency with snprintf, return the number of bytes that would have
-	 * been written, excluding '\0' */
+	// For consistency with snprintf, return the number of bytes that would
+	// have been written, excluding '\0'
 	for (; *src; src++)
 	{
 		if (isupper (*src) && prev_lower)
@@ -242,11 +241,10 @@ snprint_cameltospaces (char *str, size_t size, const char *src)
 	return l;
 }
 
-/* Similar to strcmp(str, strcamel, n) except that:
- *    it compares CamelCase in strcamel with space separated values in str;
- *    it takes char**s and updates them
- * n counts bytes of strcamel, not str
- */
+// Similar to strcmp(str, strcamel, n) except that:
+//   it compares CamelCase in strcamel with space separated values in str;
+//   it takes char**s and updates them
+// n counts bytes of strcamel, not str
 static int
 strpncmp_camel (const char **strp, const char **strcamelp, size_t n)
 {
@@ -285,7 +283,7 @@ termo_alloc (void)
 	if (!tk)
 		return NULL;
 
-	/* Default all the object fields but don't allocate anything */
+	// Default all the object fields but don't allocate anything
 
 	tk->fd         = -1;
 	tk->flags      = 0;
@@ -294,12 +292,12 @@ termo_alloc (void)
 	tk->buffer    = NULL;
 	tk->buffstart = 0;
 	tk->buffcount = 0;
-	tk->buffsize  = 256; /* bytes */
+	tk->buffsize  = 256; // bytes
 	tk->hightide  = 0;
 
 	tk->restore_termios_valid = false;
 
-	tk->waittime = 50; /* msec */
+	tk->waittime = 50; // msec
 
 	tk->is_closed  = false;
 	tk->is_started = false;
@@ -497,14 +495,14 @@ termo_start (termo_t *tk)
 			termios.c_cc[VTIME] = 0;
 
 			if (tk->flags & TERMO_FLAG_CTRLC)
-				/* want no signal keys at all, so just disable ISIG */
+				// want no signal keys at all, so just disable ISIG
 				termios.c_lflag &= ~ISIG;
 			else
 			{
-				/* Disable ^\ == VQUIT and ^D == VSUSP but leave ^C as SIGINT */
+				// Disable ^\ == VQUIT and ^D == VSUSP but leave ^C as SIGINT
 				termios.c_cc[VQUIT] = _POSIX_VDISABLE;
 				termios.c_cc[VSUSP] = _POSIX_VDISABLE;
-				/* Some OSes have ^Y == VDSUSP */
+				// Some OSes have ^Y == VDSUSP
 #ifdef VDSUSP
 				termios.c_cc[VDSUSP] = _POSIX_VDISABLE;
 #endif
@@ -626,8 +624,8 @@ termo_set_buffer_size (termo_t *tk, size_t size)
 size_t
 termo_get_buffer_remaining (termo_t *tk)
 {
-	/* Return the total number of free bytes in the buffer,
-	 * because that's what is available to the user. */
+	// Return the total number of free bytes in the buffer,
+	// because that's what is available to the user.
 	return tk->buffsize - tk->buffcount;
 }
 
@@ -667,7 +665,7 @@ fill_multibyte (termo_t *tk, termo_key_t *key)
 		return;
 	}
 
-	// Append a null character, as it wasn't port of the input
+	// Append a null character, as it wasn't part of the input
 	key->multibyte[output] = 0;
 }
 
@@ -732,12 +730,11 @@ emit_codepoint (termo_t *tk, uint32_t codepoint, termo_key_t *key)
 		if (!key->code.sym)
 		{
 			key->type = TERMO_TYPE_KEY;
-			/* Generically modified Unicode ought not report the SHIFT state,
-			 * or else we get into complications trying to report Shift-; vs :
-			 * and so on...  In order to be able to represent Ctrl-Shift-A as
-			 * CTRL modified unicode A, we need to call Ctrl-A simply 'a',
-			 * lowercase
-			 */
+			// Generically modified Unicode ought not report the SHIFT state,
+			// or else we get into complications trying to report Shift-; vs :
+			// and so on...  In order to be able to represent Ctrl-Shift-A as
+			// CTRL modified unicode A, we need to call Ctrl-A simply 'a',
+			// lowercase
 			if (codepoint + 0x40 >= 'A' && codepoint + 0x40 <= 'Z')
 				// It's a letter - use lowercase instead
 				key->code.codepoint = codepoint + 0x60;
@@ -848,7 +845,7 @@ peekkey (termo_t *tk, termo_key_t *key, int force, size_t *nbytep)
 				tk->buffstart -= halfsize;
 			}
 
-			/* fallthrough */
+			// Fallthrough
 		}
 		case TERMO_RES_EOF:
 		case TERMO_RES_ERROR:
@@ -936,11 +933,10 @@ peekkey_simple (termo_t *tk, termo_key_t *key, int force, size_t *nbytep)
 
 		if (res == TERMO_RES_AGAIN && force)
 		{
-			/* There weren't enough bytes for a complete character but
-			 * caller demands an answer.  About the best thing we can do here
-			 * is eat as many bytes as we have, and emit a MULTIBYTE_INVALID.
-			 * If the remaining bytes arrive later, they'll be invalid too.
-			 */
+			// There weren't enough bytes for a complete character but
+			// caller demands an answer.  About the best thing we can do here
+			// is eat as many bytes as we have, and emit a MULTIBYTE_INVALID.
+			// If the remaining bytes arrive later, they'll be invalid too.
 			codepoint = MULTIBYTE_INVALID;
 			*nbytep = tk->buffcount;
 			res = TERMO_RES_KEY;
@@ -1094,9 +1090,9 @@ termo_getkey (termo_t *tk, termo_key_t *key)
 		eat_bytes (tk, nbytes);
 
 	if (ret == TERMO_RES_AGAIN)
-		/* Call peekkey() again in force mode to obtain whatever it can */
+		// Call peekkey() again in force mode to obtain whatever it can
 		(void) peekkey (tk, key, 1, &nbytes);
-		/* Don't eat it yet though */
+		// Don't eat it yet though
 
 	return ret;
 }
@@ -1173,7 +1169,7 @@ retry:
 		}
 	}
 
-	/* UNREACHABLE */
+	// UNREACHABLE
 }
 
 termo_result_t
@@ -1191,7 +1187,7 @@ termo_advisereadable (termo_t *tk)
 		tk->buffstart = 0;
 	}
 
-	/* Not expecting it ever to be greater but doesn't hurt to handle that */
+	// Not expecting it ever to be greater but doesn't hurt to handle that
 	if (tk->buffcount >= tk->buffsize)
 	{
 		errno = ENOMEM;
@@ -1229,7 +1225,7 @@ termo_push_bytes (termo_t *tk, const char *bytes, size_t len)
 		tk->buffstart = 0;
 	}
 
-	/* Not expecting it ever to be greater but doesn't hurt to handle that */
+	// Not expecting it ever to be greater but doesn't hurt to handle that
 	if (tk->buffcount >= tk->buffsize)
 	{
 		errno = ENOMEM;
@@ -1286,8 +1282,8 @@ static const char *
 termo_lookup_keyname_format (termo_t *tk,
 	const char *str, termo_sym_t *sym, termo_format_t format)
 {
-	/* We store an array, so we can't do better than a linear search. Doesn't
-	 * matter because user won't be calling this too often */
+	// We store an array, so we can't do better than a linear search. Doesn't
+	// matter because user won't be calling this too often
 
 	for (*sym = 0; *sym < tk->nkeynames; (*sym)++)
 	{
@@ -1573,7 +1569,7 @@ termo_strpkey (termo_t *tk,
 		key->type = TERMO_TYPE_KEYSYM;
 		str = endstr;
 	}
-	else if (sscanf(str, "F%d%zn", &key->code.number, &snbytes) == 1)
+	else if (sscanf (str, "F%d%zn", &key->code.number, &snbytes) == 1)
 	{
 		key->type = TERMO_TYPE_FUNCTION;
 		str += snbytes;
@@ -1598,7 +1594,7 @@ int
 termo_keycmp (termo_t *tk,
 	const termo_key_t *key1p, const termo_key_t *key2p)
 {
-	/* Copy the key structs since we'll be modifying them */
+	// Copy the key structs since we'll be modifying them
 	termo_key_t key1 = *key1p, key2 = *key2p;
 
 	termo_canonicalise (tk, &key1);

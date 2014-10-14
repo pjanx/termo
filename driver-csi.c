@@ -19,9 +19,9 @@ typedef termo_result_t (*csi_handler_fn)
 	(termo_t *tk, termo_key_t *key, int cmd, long *arg, int args);
 static csi_handler_fn csi_handlers[64];
 
-/*
- * Handler for CSI/SS3 cmd keys
- */
+//
+// Handler for CSI/SS3 cmd keys
+//
 
 static struct keyinfo csi_ss3s[64];
 
@@ -67,9 +67,9 @@ register_csi_ss3 (termo_type_t type, termo_sym_t sym, unsigned char cmd)
 	register_csi_ss3_full (type, sym, 0, 0, cmd);
 }
 
-/*
- * Handler for SS3 keys with kpad alternate representations
- */
+//
+// Handler for SS3 keys with kpad alternate representations
+//
 
 static void
 register_ss3kpalt (termo_type_t type, termo_sym_t sym,
@@ -86,11 +86,11 @@ register_ss3kpalt (termo_type_t type, termo_sym_t sym,
 	ss3_kpalts[cmd - 0x40] = kpalt;
 }
 
-/*
- * Handler for CSI number ~ function keys
- */
+//
+// Handler for CSI number ~ function keys
+//
 
-/* This value must be increased if more CSI function keys are added */
+// This value must be increased if more CSI function keys are added
 static struct keyinfo csifuncs[35];
 #define NCSIFUNCS ((long) (sizeof csifuncs / sizeof csifuncs[0]))
 
@@ -146,9 +146,9 @@ register_csifunc (termo_type_t type, termo_sym_t sym, int number)
 	csi_handlers['~' - 0x40] = &handle_csifunc;
 }
 
-/*
- * URxvt seems to emit this instead of ~ when holding Ctrl
- */
+//
+// URxvt seems to emit this instead of ~ when holding Ctrl
+//
 
 static termo_result_t
 handle_csi_caret (termo_t *tk,
@@ -168,9 +168,9 @@ handle_csi_caret (termo_t *tk,
 	}
 }
 
-/*
- * Handler for CSI u extended Unicode keys
- */
+//
+// Handler for CSI u extended Unicode keys
+//
 
 static termo_result_t
 handle_csi_u (termo_t *tk, termo_key_t *key, int cmd, long *arg, int args)
@@ -195,10 +195,10 @@ handle_csi_u (termo_t *tk, termo_key_t *key, int cmd, long *arg, int args)
 	}
 }
 
-/*
- * Handler for CSI M / CSI m mouse events in SGR and rxvt encodings
- * Note: This does not handle X10 encoding
- */
+//
+// Handler for CSI M / CSI m mouse events in SGR and rxvt encodings
+// Note: This does not handle X10 encoding
+//
 
 static termo_result_t
 handle_csi_m (termo_t *tk, termo_key_t *key, int cmd, long *arg, int args)
@@ -302,10 +302,10 @@ termo_interpret_mouse (termo_t *tk, const termo_key_t *key,
 	return TERMO_RES_KEY;
 }
 
-/*
- * Handler for CSI ? R position reports
- * A plain CSI R with no arguments is probably actually <F3>
- */
+//
+// Handler for CSI ? R position reports
+// A plain CSI R with no arguments is probably actually <F3>
+//
 
 static termo_result_t
 handle_csi_R (termo_t *tk, termo_key_t *key, int cmd, long *arg, int args)
@@ -338,9 +338,9 @@ termo_interpret_position (termo_t *tk,
 	return TERMO_RES_KEY;
 }
 
-/*
- * Handler for CSI $y mode status reports
- */
+//
+// Handler for CSI $y mode status reports
+//
 
 static termo_result_t
 handle_csi_y (termo_t *tk, termo_key_t *key, int cmd, long *arg, int args)
