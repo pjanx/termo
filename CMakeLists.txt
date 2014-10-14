@@ -81,7 +81,7 @@ set (demos demo demo-async)
 if (glib_FOUND)
 	include_directories (${glib_INCLUDE_DIRS})
 	add_executable (demo-glib EXCLUDE_FROM_ALL demo-glib.c)
-	target_link_libraries (demo
+	target_link_libraries (demo-glib
 		termo-static ${lib_libraries} ${glib_LIBRARIES})
 	list (APPEND demos demo-glib)
 endif (glib_FOUND)
