@@ -257,48 +257,45 @@ termo_interpret_mouse (termo_t *tk, const termo_key_t *key,
 	if (key->type != TERMO_TYPE_MOUSE)
 		return TERMO_RES_NONE;
 
-	if (button)
-		*button = 0;
-
-	termo_key_get_linecol (key, line, col);
-
-	// XXX: WTF is this logic?
-	if (!event)
-		return TERMO_RES_KEY;
-
 	int btn = 0;
 	int code = key->code.mouse.info;
 	int drag = code & 0x20;
 	code &= ~0x3c;
 
+	termo_mouse_event_t ev;
 	switch (code)
 	{
 	case 0:
 	case 1:
 	case 2:
-		*event = drag ? TERMO_MOUSE_DRAG : TERMO_MOUSE_PRESS;
+		ev = drag ? TERMO_MOUSE_DRAG : TERMO_MOUSE_PRESS;
 		btn = code + 1;
 		break;
 
 	case 3:
-		*event = TERMO_MOUSE_RELEASE;
+		ev = TERMO_MOUSE_RELEASE;
 		// no button hint
 		break;
 
 	case 64:
 	case 65:
-		*event = drag ? TERMO_MOUSE_DRAG : TERMO_MOUSE_PRESS;
+		ev = drag ? TERMO_MOUSE_DRAG : TERMO_MOUSE_PRESS;
 		btn = code + 4 - 64;
 		break;
 
 	default:
-		*event = TERMO_MOUSE_UNKNOWN;
+		ev = TERMO_MOUSE_UNKNOWN;
 	}
 
+	if (key->code.mouse.info & 0x8000)
+		ev = TERMO_MOUSE_RELEASE;
+
+	if (event)
+		*event = ev;
 	if (button)
 		*button = btn;
-	if (key->code.mouse.info & 0x8000)
-		*event = TERMO_MOUSE_RELEASE;
+
+	termo_key_get_linecol (key, line, col);
 	return TERMO_RES_KEY;
 }
 
