@@ -74,10 +74,13 @@ set_target_properties (termo-static PROPERTIES
 add_executable (demo-async EXCLUDE_FROM_ALL demo-async.c)
 target_link_libraries (demo-async termo-static ${lib_libraries})
 
+add_executable (demo-draw EXCLUDE_FROM_ALL demo-draw.c)
+target_link_libraries (demo-draw termo-static ${lib_libraries})
+
 add_executable (demo EXCLUDE_FROM_ALL demo.c)
 target_link_libraries (demo termo-static ${lib_libraries})
 
-set (demos demo demo-async)
+set (demos demo demo-async demo-draw)
 if (glib_FOUND)
 	include_directories (${glib_INCLUDE_DIRS})
 	add_executable (demo-glib EXCLUDE_FROM_ALL demo-glib.c)
