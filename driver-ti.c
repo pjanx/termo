@@ -1,4 +1,4 @@
-// we want strdup()
+// We want strdup()
 #define _XOPEN_SOURCE 600
 
 #include "termo.h"
@@ -261,6 +261,21 @@ load_terminfo (termo_ti_t *ti, const char *term)
 		}
 	}
 
+	if (!ti->have_mouse)
+		ti->tk->guessed_mouse_proto = TERMO_MOUSE_PROTO_NONE;
+	else if (strstr (term, "rxvt") == term)
+		// urxvt generally doesn't understand the SGR protocol.
+		ti->tk->guessed_mouse_proto = TERMO_MOUSE_PROTO_RXVT;
+	else
+		// SGR (1006) is the superior protocol.  If it's not supported by the
+		// terminal, nothing much happens and we continue getting events via
+		// the original protocol (1000).  We can't afford to enable the UTF-8
+		// protocol (1005) because it collides with the original (1000) and we
+		// have no way of knowing if it's supported by the terminal.  Also both
+		// 1000 and 1005 are broken in that they may produce characters that
+		// are illegal in the current locale's charset.
+		ti->tk->guessed_mouse_proto = TERMO_MOUSE_PROTO_SGR;
+
 	// Take copies of these terminfo strings, in case we build multiple termo
 	// instances for multiple different termtypes, and it's different by the
 	// time we want to use it
@@ -287,32 +302,6 @@ load_terminfo (termo_ti_t *ti, const char *term)
 #endif
 
 	return true;
-}
-
-static void *
-new_driver (termo_t *tk, const char *term)
-{
-	termo_ti_t *ti = calloc (1, sizeof *ti);
-	if (!ti)
-		return NULL;
-
-	ti->tk = tk;
-	ti->root = new_node_arr (0, 0xff);
-	if (!ti->root)
-		goto abort_free_ti;
-
-	if (!load_terminfo (ti, term))
-		goto abort_free_trie;
-
-	ti->root = compress_trie (ti->root);
-	return ti;
-
-abort_free_trie:
-	free_trie (ti->root);
-
-abort_free_ti:
-	free (ti);
-	return NULL;
 }
 
 static bool
@@ -352,32 +341,105 @@ set_mouse (termo_ti_t *ti, bool enable)
 	return write_string (ti->tk, start_string);
 }
 
+static bool
+mouse_reset (termo_ti_t *ti)
+{
+	// Disable everything, a de-facto reset for all terminal mouse protocols
+	return set_mouse (ti, false)
+		&& write_string (ti->tk, "\E[?1002l")
+		&& write_string (ti->tk, "\E[?1003l")
+
+		&& write_string (ti->tk, "\E[?1005l")
+		&& write_string (ti->tk, "\E[?1006l")
+		&& write_string (ti->tk, "\E[?1015l");
+}
+
+static bool
+mouse_set_proto (void *data, int proto, bool enable)
+{
+	termo_ti_t *ti = data;
+	bool success = true;
+	if (proto & TERMO_MOUSE_PROTO_VT200)
+		success &= set_mouse (ti, enable);
+	if (proto & TERMO_MOUSE_PROTO_UTF8)
+		success &= write_string (ti->tk, enable ? "\E[?1005h" : "\E[?1005l");
+	if (proto & TERMO_MOUSE_PROTO_SGR)
+		success &= write_string (ti->tk, enable ? "\E[?1006h" : "\E[?1006l");
+	if (proto & TERMO_MOUSE_PROTO_RXVT)
+		success &= write_string (ti->tk, enable ? "\E[?1015h" : "\E[?1015l");
+	return success;
+}
+
+static bool
+mouse_set_tracking_mode (void *data,
+	termo_mouse_tracking_t tracking, bool enable)
+{
+	termo_ti_t *ti = data;
+	if (tracking == TERMO_MOUSE_TRACKING_DRAG)
+		return write_string (ti->tk, enable ? "\E[?1002h" : "\E[?1002l");
+	if (tracking == TERMO_MOUSE_TRACKING_ANY)
+		return write_string (ti->tk, enable ? "\E[?1003h" : "\E[?1003l");
+	return true;
+}
+
 static int
 start_driver (termo_t *tk, void *info)
 {
 	termo_ti_t *ti = info;
-	// TODO: Don't start the mouse automatically, find a nice place to put
-	//   a public function to be called by users.
-	// TODO: Try to autodetect rxvt and use its protocol instead of mode 1000
-	// TODO: Also give the user a choice to use 1005, 1006 or 1015
-	if (ti->have_mouse && !set_mouse (ti, true))
-		return false;
-	return write_string (tk, ti->start_string);
+	return write_string (tk, ti->start_string)
+		&& ((!ti->have_mouse && tk->mouse_proto == TERMO_MOUSE_PROTO_NONE)
+			|| mouse_reset (ti)) // We can never be sure
+		&& mouse_set_proto (ti, tk->mouse_proto, true)
+		&& mouse_set_tracking_mode (ti, tk->mouse_tracking, true);
 }
 
 static int
 stop_driver (termo_t *tk, void *info)
 {
 	termo_ti_t *ti = info;
-	if (ti->have_mouse && !set_mouse (ti, false))
-		return false;
-	return write_string (tk, ti->stop_string);
+	return write_string (tk, ti->stop_string)
+		&& mouse_set_proto (ti, tk->mouse_proto, false)
+		&& mouse_set_tracking_mode (ti, tk->mouse_tracking, false);
+}
+
+static void *
+new_driver (termo_t *tk, const char *term)
+{
+	termo_ti_t *ti = calloc (1, sizeof *ti);
+	if (!ti)
+		return NULL;
+
+	ti->tk = tk;
+	ti->root = new_node_arr (0, 0xff);
+	if (!ti->root)
+		goto abort_free_ti;
+
+	if (!load_terminfo (ti, term))
+		goto abort_free_trie;
+
+	ti->root = compress_trie (ti->root);
+
+	tk->ti_data = ti;
+	tk->ti_method.set_mouse_proto = mouse_set_proto;
+	tk->ti_method.set_mouse_tracking_mode = mouse_set_tracking_mode;
+	return ti;
+
+abort_free_trie:
+	free_trie (ti->root);
+
+abort_free_ti:
+	free (ti);
+	return NULL;
 }
 
 static void
 free_driver (void *info)
 {
 	termo_ti_t *ti = info;
+	ti->tk->ti_data = NULL;
+	ti->tk->ti_method.set_mouse_proto = NULL;
+	ti->tk->ti_method.set_mouse_tracking_mode = NULL;
+
 	free_trie (ti->root);
 	free (ti->set_mouse_string);
 	free (ti->start_string);

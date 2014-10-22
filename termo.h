@@ -121,6 +121,26 @@ enum termo_mouse_event
 	TERMO_MOUSE_RELEASE
 };
 
+// You will want to handle GPM (incompatible license) and FreeBSD's sysmouse
+// yourself.  http://www.monkey.org/openbsd/archive/tech/0009/msg00018.html
+
+enum
+{
+	TERMO_MOUSE_PROTO_NONE  = 0,
+	TERMO_MOUSE_PROTO_VT200 = 1 << 0,
+	TERMO_MOUSE_PROTO_UTF8  = 1 << 1 | TERMO_MOUSE_PROTO_VT200,
+	TERMO_MOUSE_PROTO_SGR   = 1 << 2 | TERMO_MOUSE_PROTO_VT200,
+	TERMO_MOUSE_PROTO_RXVT  = 1 << 3 | TERMO_MOUSE_PROTO_VT200
+};
+
+typedef enum termo_mouse_tracking termo_mouse_tracking_t;
+enum termo_mouse_tracking
+{
+	TERMO_MOUSE_TRACKING_NORMAL,
+	TERMO_MOUSE_TRACKING_DRAG,
+	TERMO_MOUSE_TRACKING_ANY
+};
+
 enum
 {
 	TERMO_KEYMOD_SHIFT = 1 << 0,
@@ -208,6 +228,13 @@ int termo_set_buffer_size (termo_t *tk, size_t size);
 size_t termo_get_buffer_remaining (termo_t *tk);
 
 void termo_canonicalise (termo_t *tk, termo_key_t *key);
+
+int termo_get_mouse_proto (termo_t *tk);
+int termo_set_mouse_proto (termo_t *tk, int proto);
+int termo_guess_mouse_proto (termo_t *tk);
+
+termo_mouse_tracking_t termo_get_mouse_tracking_mode (termo_t *tk);
+int termo_set_mouse_tracking_mode (termo_t *tk, termo_mouse_tracking_t mode);
 
 termo_result_t termo_getkey (termo_t *tk, termo_key_t *key);
 termo_result_t termo_getkey_force (termo_t *tk, termo_key_t *key);

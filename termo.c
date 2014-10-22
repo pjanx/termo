@@ -313,6 +313,14 @@ termo_alloc (void)
 	tk->method.emit_codepoint = &emit_codepoint;
 	tk->method.peekkey_simple = &peekkey_simple;
 	tk->method.peekkey_mouse  = &peekkey_mouse;
+
+	tk->mouse_proto = TERMO_MOUSE_PROTO_NONE;
+	tk->mouse_tracking = TERMO_MOUSE_TRACKING_NORMAL;
+	tk->guessed_mouse_proto = TERMO_MOUSE_PROTO_NONE;
+
+	tk->ti_data = NULL;
+	tk->ti_method.set_mouse_proto = NULL;
+	tk->ti_method.set_mouse_tracking_mode = NULL;
 	return tk;
 }
 
@@ -623,6 +631,52 @@ termo_get_buffer_remaining (termo_t *tk)
 	// Return the total number of free bytes in the buffer,
 	// because that's what is available to the user.
 	return tk->buffsize - tk->buffcount;
+}
+
+int
+termo_get_mouse_proto (termo_t *tk)
+{
+	return tk->mouse_proto;
+}
+
+int
+termo_guess_mouse_proto (termo_t *tk)
+{
+	return tk->guessed_mouse_proto;
+}
+
+int
+termo_set_mouse_proto (termo_t *tk, int proto)
+{
+	int old_proto = tk->mouse_proto;
+	tk->mouse_proto = proto;
+
+	// Call the TI driver to apply the change if needed
+	if (!tk->is_started
+	 || !tk->ti_method.set_mouse_proto)
+		return true;
+	return tk->ti_method.set_mouse_proto (tk->ti_data, old_proto, false)
+		&& tk->ti_method.set_mouse_proto (tk->ti_data, proto, true);
+}
+
+termo_mouse_tracking_t
+termo_get_mouse_tracking_mode (termo_t *tk)
+{
+	return tk->mouse_tracking;
+}
+
+int
+termo_set_mouse_tracking_mode (termo_t *tk, termo_mouse_tracking_t mode)
+{
+	termo_mouse_tracking_t old_mode = tk->mouse_tracking;
+	tk->mouse_tracking = mode;
+
+	// Call the TI driver to apply the change if needed
+	if (!tk->is_started
+	 || !tk->ti_method.set_mouse_tracking_mode)
+		return true;
+	return tk->ti_method.set_mouse_tracking_mode (tk->ti_data, old_mode, false)
+		&& tk->ti_method.set_mouse_tracking_mode (tk->ti_data, mode, true);
 }
 
 static void

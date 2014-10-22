@@ -80,6 +80,22 @@ struct termo
 			termo_key_t *key, size_t *nbytes);
 	}
 	method;
+
+	int guessed_mouse_proto; // What we think should be the mouse protocol
+	int mouse_proto; // The active mouse protocol
+	termo_mouse_tracking_t mouse_tracking; // Mouse tracking mode
+
+	// The mouse unfortunately directly depends on the terminfo driver to let
+	// it handle changes in the mouse protocol.
+
+	void *ti_data; // termo_ti_t pointer
+
+	struct
+	{
+		bool (*set_mouse_proto) (void *, int, bool);
+		bool (*set_mouse_tracking_mode) (void *, termo_mouse_tracking_t, bool);
+	}
+	ti_method;
 };
 
 static inline void
