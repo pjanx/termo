@@ -330,9 +330,14 @@ termo_init (termo_t *tk, const char *term, const char *encoding)
 	if (!encoding)
 		encoding = nl_langinfo (CODESET);
 
-	if ((tk->to_utf32_conv = iconv_open ("UTF-32", encoding)) == (iconv_t) -1)
+	// If we don't specify the endianity, iconv() outputs the BOM first
+	static const uint16_t endianity = 0x0102;
+	const char *utf32 = (*(uint8_t *) &endianity == 0x01)
+		? "UTF-32BE" : "UTF-32LE";
+
+	if ((tk->to_utf32_conv = iconv_open (utf32, encoding)) == (iconv_t) -1)
 		return 0;
-	if ((tk->from_utf32_conv = iconv_open (encoding, "UTF-32")) == (iconv_t) -1)
+	if ((tk->from_utf32_conv = iconv_open (encoding, utf32)) == (iconv_t) -1)
 		goto abort_free_to_utf32;
 
 	tk->buffer = malloc (tk->buffsize);
