@@ -14,8 +14,8 @@
 #include <curses.h>
 #include "termo.h"
 
-typedef struct app_data app_data_t;
-struct app_data
+typedef struct app_context app_context_t;
+struct app_context
 {
 	termo_t *tk;
 
@@ -44,7 +44,7 @@ display (const char *format, ...)
 }
 
 static void
-init_palette (app_data_t *app)
+init_palette (app_context_t *app)
 {
 	start_color ();
 
@@ -87,7 +87,7 @@ redraw (void)
 }
 
 static bool
-on_key (app_data_t *app, termo_key_t *key)
+on_key (app_context_t *app, termo_key_t *key)
 {
 	if (key->type == TERMO_TYPE_KEYSYM
 	 && key->code.sym == TERMO_SYM_ESCAPE)
@@ -175,7 +175,7 @@ main (int argc, char *argv[])
 		exit (EXIT_FAILURE);
 	}
 
-	app_data_t app;
+	app_context_t app;
 	memset (&app, 0, sizeof app);
 	app.tk = tk;
 
