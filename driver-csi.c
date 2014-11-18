@@ -68,6 +68,54 @@ register_csi_ss3 (termo_type_t type, termo_sym_t sym, unsigned char cmd)
 }
 
 //
+// Handler for rxvt special cursor key codes
+//
+
+static termo_result_t
+handle_csi_cursor (termo_t *tk,
+	termo_key_t *key, int cmd, long *arg, int args)
+{
+	(void) tk;
+	(void) arg;
+	(void) args;
+
+	key->type      = TERMO_TYPE_KEYSYM;
+	key->modifiers = 0;
+
+	if (cmd == 'a') key->code.sym = TERMO_SYM_UP;
+	if (cmd == 'b') key->code.sym = TERMO_SYM_DOWN;
+	if (cmd == 'c') key->code.sym = TERMO_SYM_RIGHT;
+	if (cmd == 'd') key->code.sym = TERMO_SYM_LEFT;
+
+	if (key->code.sym == TERMO_SYM_UNKNOWN)
+		return TERMO_RES_NONE;
+
+	// CSI with small letter stands for Shift
+	// SS3 with small letter stands for Ctrl but we don't handle that here
+	if (cmd & 32)
+		key->modifiers |= TERMO_KEYMOD_SHIFT;
+
+	return TERMO_RES_KEY;
+}
+
+//
+// Handler for rxvt SS3-only key combinations
+//
+
+static void
+register_ss3 (termo_type_t type, termo_sym_t sym,
+	int modifier_set, unsigned char cmd)
+{
+	if (cmd < 0x40 || cmd >= 0x80)
+		return;
+
+	ss3s[cmd - 0x40].type          = type;
+	ss3s[cmd - 0x40].sym           = sym;
+	ss3s[cmd - 0x40].modifier_set  = modifier_set;
+	ss3s[cmd - 0x40].modifier_mask = 0;
+}
+
+//
 // Handler for SS3 keys with kpad alternate representations
 //
 
@@ -147,22 +195,31 @@ register_csifunc (termo_type_t type, termo_sym_t sym, int number)
 }
 
 //
-// URxvt seems to emit this instead of ~ when holding Ctrl
+// rxvt seems to emit these instead of ~ when holding various modifiers
 //
 
 static termo_result_t
-handle_csi_caret (termo_t *tk,
+handle_csi_rxvt (termo_t *tk,
 	termo_key_t *key, int cmd, long *arg, int args)
 {
+	termo_result_t res;
 	switch (cmd)
 	{
 	case '^':
-	{
-		termo_result_t res = handle_csifunc (tk, key, cmd, arg, args);
+		res = handle_csifunc (tk, key, cmd, arg, args);
 		if (res == TERMO_RES_KEY)
 			key->modifiers |= TERMO_KEYMOD_CTRL;
 		return res;
-	}
+	case '$':
+		res = handle_csifunc (tk, key, cmd, arg, args);
+		if (res == TERMO_RES_KEY)
+			key->modifiers |= TERMO_KEYMOD_SHIFT;
+		return res;
+	case '@':
+		res = handle_csifunc (tk, key, cmd, arg, args);
+		if (res == TERMO_RES_KEY)
+			key->modifiers |= TERMO_KEYMOD_CTRL | TERMO_KEYMOD_SHIFT;
+		return res;
 	default:
 		return TERMO_RES_NONE;
 	}
@@ -489,6 +546,22 @@ register_keys (void)
 	register_csi_ss3 (TERMO_TYPE_FUNCTION, 3, 'R');
 	register_csi_ss3 (TERMO_TYPE_FUNCTION, 4, 'S');
 
+	// Handle Shift-modified rxvt cursor keys (CSI a, CSI b, CSI c, CSI d)
+	csi_handlers['a' - 0x40] = &handle_csi_cursor;
+	csi_handlers['b' - 0x40] = &handle_csi_cursor;
+	csi_handlers['c' - 0x40] = &handle_csi_cursor;
+	csi_handlers['d' - 0x40] = &handle_csi_cursor;
+
+	// Handle Ctrl-modified rxvt cursor keys (SS3 a, SS3 b, SS3 c, SS3 d)
+	register_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_UP,    TERMO_KEYMOD_CTRL, 'a');
+	register_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_DOWN,  TERMO_KEYMOD_CTRL, 'b');
+	register_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_RIGHT, TERMO_KEYMOD_CTRL, 'c');
+	register_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_LEFT,  TERMO_KEYMOD_CTRL, 'd');
+
+	// Unfortunately Ctrl-Shift-modified rxvt cursor keys get eaten up by
+	// csi_ss3s as unmodified but rxvt-unicode only seems to output Shift codes
+	// for them anyway, so it's not a huge loss.
+
 	register_csi_ss3_full (TERMO_TYPE_KEYSYM, TERMO_SYM_TAB,
 		TERMO_KEYMOD_SHIFT, TERMO_KEYMOD_SHIFT, 'Z');
 
@@ -550,17 +623,9 @@ register_keys (void)
 
 	csi_handlers['y' - 0x40] = &handle_csi_y;
 
-	// URxvt
-	register_csi_ss3_full (TERMO_TYPE_KEYSYM, TERMO_SYM_UP,
-		TERMO_KEYMOD_CTRL, TERMO_KEYMOD_CTRL, 'a');
-	register_csi_ss3_full (TERMO_TYPE_KEYSYM, TERMO_SYM_DOWN,
-		TERMO_KEYMOD_CTRL, TERMO_KEYMOD_CTRL, 'b');
-	register_csi_ss3_full (TERMO_TYPE_KEYSYM, TERMO_SYM_RIGHT,
-		TERMO_KEYMOD_CTRL, TERMO_KEYMOD_CTRL, 'c');
-	register_csi_ss3_full (TERMO_TYPE_KEYSYM, TERMO_SYM_LEFT,
-		TERMO_KEYMOD_CTRL, TERMO_KEYMOD_CTRL, 'd');
-
-	csi_handlers['^' - 0x40] = &handle_csi_caret;
+	csi_handlers['^' - 0x40] = &handle_csi_rxvt;
+	csi_handlers['$' - 0x40] = &handle_csi_rxvt;
+	csi_handlers['@' - 0x40] = &handle_csi_rxvt;
 
 	keyinfo_initialised = 1;
 	return 1;
