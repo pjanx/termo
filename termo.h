@@ -164,7 +164,7 @@ struct termo_key
 
 		// TERMO_TYPE_MOUSE
 		// opaque, see termo_interpret_mouse()
-		struct { uint16_t x, y, info; } mouse;
+		struct { int16_t x, y, info; } mouse;
 	} code;
 
 	int modifiers;
