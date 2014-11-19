@@ -42,6 +42,10 @@ your system.  The characters are still presented as Unicode in the end, however,
 as the other sensible option is wchar_t and that doesn't really work well, see
 http://gnu.org/software/libunistring/manual/libunistring.html#The-wchar_005ft-mess
 
+To make the mouse parsing support actually useful, some API has been added to
+set the proper modes on request, and unset them appropriately while destroying.
+You can have a look at demo-draw.c for an example.
+
 Another change worth mentioning is the usage of CMake instead of the problematic
 libtool-based Makefile.  Now you can include this project in your other CMake-
 -based projects and simply import the target.  No package maintainer action is
@@ -52,7 +56,7 @@ Oh, and I've deleted the manpages.  It needs more Doxygen. :)  TBD
 
 License
 -------
-`termo' is based on the `termkey' library originally written by Paul Evans
+`termo' is based on the `termkey' library, originally written by Paul Evans
 <leonerd@leonerd.org.uk>, with additional changes made by Přemysl Janouch
 <p.janouch@gmail.com>.
 
