@@ -639,13 +639,13 @@ termo_get_buffer_remaining (termo_t *tk)
 }
 
 termo_mouse_proto_t
-termo_get_mouse_proto(termo_t *tk)
+termo_get_mouse_proto (termo_t *tk)
 {
 	return tk->mouse_proto;
 }
 
 termo_mouse_proto_t
-termo_guess_mouse_proto(termo_t *tk)
+termo_guess_mouse_proto (termo_t *tk)
 {
 	return tk->guessed_mouse_proto;
 }
