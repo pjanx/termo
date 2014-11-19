@@ -58,7 +58,6 @@ typedef struct
 	char *start_string;
 	char *stop_string;
 
-	bool have_mouse;
 	char *set_mouse_string;
 }
 termo_ti_t;
@@ -243,11 +242,12 @@ load_terminfo (termo_ti_t *ti, const char *term)
 	else
 		ti->set_mouse_string = strdup (set_mouse_string);
 
+	bool have_mouse = false;
 	if (!mouse_report_string && strstr (term, "xterm"))
 		mouse_report_string = "\x1b[M";
 	if (mouse_report_string)
 	{
-		ti->have_mouse = true;
+		have_mouse = true;
 
 		trie_node_t *node = malloc (sizeof *node);
 		if (!node)
@@ -261,7 +261,7 @@ load_terminfo (termo_ti_t *ti, const char *term)
 		}
 	}
 
-	if (!ti->have_mouse)
+	if (!have_mouse)
 		ti->tk->guessed_mouse_proto = TERMO_MOUSE_PROTO_NONE;
 	else if (strstr (term, "rxvt") == term)
 		// urxvt generally doesn't understand the SGR protocol.
@@ -275,6 +275,9 @@ load_terminfo (termo_ti_t *ti, const char *term)
 		// 1000 and 1005 are broken in that they may produce characters that
 		// are illegal in the current locale's charset.
 		ti->tk->guessed_mouse_proto = TERMO_MOUSE_PROTO_SGR;
+
+	// Preset the active protocol to our wild guess
+	ti->tk->mouse_proto = ti->tk->guessed_mouse_proto;
 
 	// Take copies of these terminfo strings, in case we build multiple termo
 	// instances for multiple different termtypes, and it's different by the
@@ -346,28 +349,12 @@ mouse_reset (termo_ti_t *ti)
 {
 	// Disable everything, a de-facto reset for all terminal mouse protocols
 	return set_mouse (ti, false)
-		&& write_string (ti->tk, "\E[?1002l")
-		&& write_string (ti->tk, "\E[?1003l")
+		&& write_string (ti->tk, "\x1b[?1002l")
+		&& write_string (ti->tk, "\x1b[?1003l")
 
-		&& write_string (ti->tk, "\E[?1005l")
-		&& write_string (ti->tk, "\E[?1006l")
-		&& write_string (ti->tk, "\E[?1015l");
-}
-
-static bool
-mouse_set_proto (void *data, int proto, bool enable)
-{
-	termo_ti_t *ti = data;
-	bool success = true;
-	if (proto & TERMO_MOUSE_PROTO_VT200)
-		success &= set_mouse (ti, enable);
-	if (proto & TERMO_MOUSE_PROTO_UTF8)
-		success &= write_string (ti->tk, enable ? "\E[?1005h" : "\E[?1005l");
-	if (proto & TERMO_MOUSE_PROTO_SGR)
-		success &= write_string (ti->tk, enable ? "\E[?1006h" : "\E[?1006l");
-	if (proto & TERMO_MOUSE_PROTO_RXVT)
-		success &= write_string (ti->tk, enable ? "\E[?1015h" : "\E[?1015l");
-	return success;
+		&& write_string (ti->tk, "\x1b[?1005l")
+		&& write_string (ti->tk, "\x1b[?1006l")
+		&& write_string (ti->tk, "\x1b[?1015l");
 }
 
 static bool
@@ -375,10 +362,26 @@ mouse_set_tracking_mode (void *data,
 	termo_mouse_tracking_t tracking, bool enable)
 {
 	termo_ti_t *ti = data;
+	if (tracking == TERMO_MOUSE_TRACKING_CLICK)
+		return set_mouse (ti, enable);
 	if (tracking == TERMO_MOUSE_TRACKING_DRAG)
-		return write_string (ti->tk, enable ? "\E[?1002h" : "\E[?1002l");
-	if (tracking == TERMO_MOUSE_TRACKING_ANY)
-		return write_string (ti->tk, enable ? "\E[?1003h" : "\E[?1003l");
+		return write_string (ti->tk, enable ? "\x1b[?1002h" : "\x1b[?1002l");
+	if (tracking == TERMO_MOUSE_TRACKING_MOVE)
+		return write_string (ti->tk, enable ? "\x1b[?1003h" : "\x1b[?1003l");
+	return true;
+}
+
+static bool
+mouse_set_proto (void *data, termo_mouse_proto_t proto, bool enable)
+{
+	termo_ti_t *ti = data;
+	// TERMO_MOUSE_PROTO_XTERM is ignored here; it is the default protocol
+	if (proto == TERMO_MOUSE_PROTO_UTF8)
+		return write_string (ti->tk, enable ? "\x1b[?1005h" : "\x1b[?1005l");
+	if (proto == TERMO_MOUSE_PROTO_SGR)
+		return write_string (ti->tk, enable ? "\x1b[?1006h" : "\x1b[?1006l");
+	if (proto == TERMO_MOUSE_PROTO_RXVT)
+		return write_string (ti->tk, enable ? "\x1b[?1015h" : "\x1b[?1015l");
 	return true;
 }
 
@@ -386,10 +389,17 @@ static int
 start_driver (termo_t *tk, void *info)
 {
 	termo_ti_t *ti = info;
-	return write_string (tk, ti->start_string)
-		&& ((!ti->have_mouse && tk->mouse_proto == TERMO_MOUSE_PROTO_NONE)
-			|| mouse_reset (ti)) // We can never be sure
-		&& mouse_set_proto (ti, tk->mouse_proto, true)
+	if (!write_string (tk, ti->start_string))
+		return false;
+
+	// If there's no protocol, it doesn't make sense to try anything else
+	if (tk->mouse_proto == TERMO_MOUSE_PROTO_NONE)
+		return true;
+
+	// Disable everything mouse-related first
+	if (!mouse_reset (ti))
+		return false;
+	return mouse_set_proto (ti, tk->mouse_proto, true)
 		&& mouse_set_tracking_mode (ti, tk->mouse_tracking, true);
 }
 
@@ -397,8 +407,13 @@ static int
 stop_driver (termo_t *tk, void *info)
 {
 	termo_ti_t *ti = info;
-	return write_string (tk, ti->stop_string)
-		&& mouse_set_proto (ti, tk->mouse_proto, false)
+	if (!write_string (tk, ti->stop_string))
+		return false;
+
+	// If there's no protocol, it doesn't make sense to try anything else
+	if (tk->mouse_proto == TERMO_MOUSE_PROTO_NONE)
+		return true;
+	return mouse_set_proto (ti, tk->mouse_proto, false)
 		&& mouse_set_tracking_mode (ti, tk->mouse_tracking, false);
 }
 

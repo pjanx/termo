@@ -81,9 +81,12 @@ struct termo
 	}
 	method;
 
-	int guessed_mouse_proto; // What we think should be the mouse protocol
-	int mouse_proto; // The active mouse protocol
-	termo_mouse_tracking_t mouse_tracking; // Mouse tracking mode
+	// What we think should be the mouse protocol
+	termo_mouse_proto_t guessed_mouse_proto;
+	// The active mouse protocol
+	termo_mouse_proto_t mouse_proto;
+	// Mouse tracking mode
+	termo_mouse_tracking_t mouse_tracking;
 
 	// The mouse unfortunately directly depends on the terminfo driver to let
 	// it handle changes in the mouse protocol.
@@ -92,7 +95,7 @@ struct termo
 
 	struct
 	{
-		bool (*set_mouse_proto) (void *, int, bool);
+		bool (*set_mouse_proto) (void *, termo_mouse_proto_t, bool);
 		bool (*set_mouse_tracking_mode) (void *, termo_mouse_tracking_t, bool);
 	}
 	ti_method;

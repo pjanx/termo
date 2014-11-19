@@ -315,7 +315,7 @@ termo_alloc (void)
 	tk->method.peekkey_mouse  = &peekkey_mouse;
 
 	tk->mouse_proto = TERMO_MOUSE_PROTO_NONE;
-	tk->mouse_tracking = TERMO_MOUSE_TRACKING_NORMAL;
+	tk->mouse_tracking = TERMO_MOUSE_TRACKING_CLICK;
 	tk->guessed_mouse_proto = TERMO_MOUSE_PROTO_NONE;
 
 	tk->ti_data = NULL;
@@ -638,28 +638,35 @@ termo_get_buffer_remaining (termo_t *tk)
 	return tk->buffsize - tk->buffcount;
 }
 
-int
-termo_get_mouse_proto (termo_t *tk)
+termo_mouse_proto_t
+termo_get_mouse_proto(termo_t *tk)
 {
 	return tk->mouse_proto;
 }
 
-int
-termo_guess_mouse_proto (termo_t *tk)
+termo_mouse_proto_t
+termo_guess_mouse_proto(termo_t *tk)
 {
 	return tk->guessed_mouse_proto;
 }
 
 int
-termo_set_mouse_proto (termo_t *tk, int proto)
+termo_set_mouse_proto (termo_t *tk, termo_mouse_proto_t proto)
 {
-	int old_proto = tk->mouse_proto;
+	termo_mouse_proto_t old_proto = tk->mouse_proto;
 	tk->mouse_proto = proto;
 
 	// Call the TI driver to apply the change if needed
-	if (!tk->is_started
+	if (proto == old_proto
+	 || !tk->is_started
 	 || !tk->ti_method.set_mouse_proto)
 		return true;
+
+	// Unsetting the protocol disables tracking; this is a bit hackish
+	if (!tk->ti_method.set_mouse_tracking_mode (tk->ti_data,
+		tk->mouse_tracking, proto != TERMO_MOUSE_PROTO_NONE))
+		return false;
+
 	return tk->ti_method.set_mouse_proto (tk->ti_data, old_proto, false)
 		&& tk->ti_method.set_mouse_proto (tk->ti_data, proto, true);
 }
@@ -677,9 +684,11 @@ termo_set_mouse_tracking_mode (termo_t *tk, termo_mouse_tracking_t mode)
 	tk->mouse_tracking = mode;
 
 	// Call the TI driver to apply the change if needed
-	if (!tk->is_started
+	if (mode == old_mode
+	 || !tk->is_started
 	 || !tk->ti_method.set_mouse_tracking_mode)
 		return true;
+
 	return tk->ti_method.set_mouse_tracking_mode (tk->ti_data, old_mode, false)
 		&& tk->ti_method.set_mouse_tracking_mode (tk->ti_data, mode, true);
 }

@@ -165,7 +165,6 @@ main (int argc, char *argv[])
 		exit (EXIT_FAILURE);
 	}
 
-	termo_set_mouse_proto (tk, termo_guess_mouse_proto (tk));
 	termo_set_mouse_tracking_mode (tk, TERMO_MOUSE_TRACKING_DRAG);
 
 	// Set up curses for our drawing needs

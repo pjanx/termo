@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <locale.h>
+#include <strings.h>
 
 #include "termo.h"
 
@@ -14,31 +15,33 @@ main(int argc, char *argv[])
 	TERMO_CHECK_VERSION;
 	setlocale (LC_CTYPE, "");
 
-	int mouse = 0;
-	int mouse_proto = 0;
+	termo_mouse_tracking_t mouse = TERMO_MOUSE_TRACKING_OFF;
 	termo_format_t format = TERMO_FORMAT_VIM;
 
 	char buffer[50];
 	termo_t *tk;
 
 	int opt;
-	while ((opt = getopt (argc, argv, "m::p:")) != -1)
+	while ((opt = getopt (argc, argv, "m::")) != -1)
 	{
 		switch (opt)
 		{
 		case 'm':
-			if (optarg)
-				mouse = atoi (optarg);
-			else
-				mouse = 1000;
-			break;
-
-		case 'p':
-			mouse_proto = atoi (optarg);
+			if (!optarg)
+				mouse = TERMO_MOUSE_TRACKING_DRAG;
+			else if (!strcasecmp (optarg, "off"))
+				mouse = TERMO_MOUSE_TRACKING_OFF;
+			else if (!strcasecmp (optarg, "click"))
+				mouse = TERMO_MOUSE_TRACKING_CLICK;
+			else if (!strcasecmp (optarg, "drag"))
+				mouse = TERMO_MOUSE_TRACKING_DRAG;
+			else if (!strcasecmp (optarg, "move"))
+				mouse = TERMO_MOUSE_TRACKING_MOVE;
 			break;
 
 		default:
-			fprintf (stderr, "Usage: %s [-m]\n", argv[0]);
+			fprintf (stderr,
+				"Usage: %s [ -m [ off | click | drag | move ]]\n", argv[0]);
 			return 1;
 		}
 	}
@@ -59,12 +62,9 @@ main(int argc, char *argv[])
 	termo_result_t ret;
 	termo_key_t key;
 
-	if (mouse)
-	{
-		printf ("\033[?%dhMouse mode active\n", mouse);
-		if (mouse_proto)
-			printf ("\033[?%dh", mouse_proto);
-	}
+	termo_set_mouse_tracking_mode (tk, mouse);
+	if (mouse != TERMO_MOUSE_TRACKING_OFF)
+		printf ("Mouse mode active\n");
 
 	while ((ret = termo_waitkey (tk, &key)) != TERMO_RES_EOF)
 	{
@@ -129,9 +129,6 @@ main(int argc, char *argv[])
 			printf ("Interrupted by signal\n");
 		}
 	}
-
-	if (mouse)
-		printf ("\033[?%dlMouse mode deactivated\n", mouse);
 
 	termo_destroy (tk);
 }
