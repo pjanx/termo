@@ -562,6 +562,10 @@ register_keys (void)
 	// csi_ss3s as unmodified but rxvt-unicode only seems to output Shift codes
 	// for them anyway, so it's not a huge loss.
 
+	// TODO: change the handling depending on the value of TERM
+	//   - rxvt-based terminals use SS3 A/B/C/D for C-S-arrow keys
+	//   - PuTTY uses SS3 A/B/C/D for something different -> try it out
+
 	register_csi_ss3_full (TERMO_TYPE_KEYSYM, TERMO_SYM_TAB,
 		TERMO_KEYMOD_SHIFT, TERMO_KEYMOD_SHIFT, 'Z');
 
