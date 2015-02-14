@@ -1,0 +1,21 @@
+language: c
+notifications:
+ irc:
+  channels: "anathema.us.nu#anathema"
+  use_notice: true
+  skip_join: true
+compiler:
+ - clang
+ - gcc
+before_install:
+ - sudo apt-get update -qq
+install:
+ - sudo apt-get install -y libncursesw5-dev libglib2.0-dev
+before_script:
+ - mkdir build
+ - cd build
+script:
+ - cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=ON
+ - make all demos
+ - ctest -V
+ - cpack -G DEB
