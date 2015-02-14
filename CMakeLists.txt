@@ -74,6 +74,14 @@ set_target_properties (termo-static PROPERTIES
 	VERSION ${project_VERSION}
 	SOVERSION ${project_API_VERSION})
 
+# A fix for: relocation R_X86_64_32 against `a local symbol' can not be
+#   used when making a shared object; recompile with -fPIC
+# See http://www.cmake.org/pipermail/cmake/2007-May/014350.html
+# This should enable linking the static library into a shared one.
+if (CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+	set_target_properties (termo-static PROPERTIES COMPILE_FLAGS "-fPIC")
+endif (CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+
 # Demos
 add_executable (demo-async EXCLUDE_FROM_ALL demo-async.c)
 target_link_libraries (demo-async termo-static ${lib_libraries})
