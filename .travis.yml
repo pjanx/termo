@@ -4,6 +4,18 @@ notifications:
   channels: "anathema.us.nu#anathema"
   use_notice: true
   skip_join: true
+env:
+ global:
+  - secure: "rzavv9NhQeZ3Zn6g9WgabUuTsXG1ncc+dWyXw3ytN15uWa4UelVzjAYvr31XeyXwsqZi3rDRHuz8ooIi1NLeLewozpEdkyakLjZOAnggqCnkF/yw/secuRo8MzweGXAefF+7cR2JYyH/E/PfMfAY8Qb0NnfEV1j7X9GCN2sJcxA="
+addons:
+ coverity_scan:
+  project:
+   name: "pjanouch/termo"
+   description: "Terminal key input library"
+  notification_email: p.janouch@gmail.com
+  build_command_prepend: "cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON"
+  build_command: "make all demos"
+  branch_pattern: coverity_scan
 compiler:
  - clang
  - gcc
