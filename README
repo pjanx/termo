@@ -14,16 +14,16 @@ The API isn't stable yet.  Tell me what needs to be done so I can fix it first.
 
 Building and Installing
 -----------------------
-Build dependencies: GCC/Clang, pkg-config, cmake >= 2.8.5
+Build dependencies: cmake >= 2.8.5, pkg-config
 Optional dependencies: Unibilium (alternative for curses), GLib (for the demos)
 
  $ git clone https://github.com/pjanouch/termo.git
  $ mkdir build
  $ cd build
- $ cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
+ $ cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug
 
 To install the library, you can do either the usual:
- $ make install
+ # make install
 
 Or you can try telling CMake to make a package for you.  For Debian it is:
  $ cpack -G DEB

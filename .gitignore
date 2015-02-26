@@ -1,2 +1,9 @@
-# Qt Creator
+# Build files
+/build
+
+# Qt Creator files
 /CMakeLists.txt.user*
+/termo.config
+/termo.files
+/termo.creator*
+/termo.includes
