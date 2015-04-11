@@ -356,7 +356,6 @@ termo_init (termo_t *tk, const char *term, const char *encoding)
 			keynames[i].sym, keynames[i].name) == -1)
 			goto abort_free_keynames;
 
-	register_c0 (tk, TERMO_SYM_BACKSPACE, 0x08, NULL);
 	register_c0 (tk, TERMO_SYM_TAB,       0x09, NULL);
 	register_c0 (tk, TERMO_SYM_ENTER,     0x0d, NULL);
 	register_c0 (tk, TERMO_SYM_ESCAPE,    0x1b, NULL);
