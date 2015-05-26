@@ -4,10 +4,17 @@
 #include <stdio.h>
 #include <string.h>
 
-// There are 64 codes 0x40 - 0x7F
+// There are 64 basic codes 0x40 - 0x7F that end a key sequence,
+// plus 0x24 ($) for shifted keys in rxvt-based terminals.
+
+// The CSI/SS3 naming isn't completely appropriate, as that only really applies
+// to the other direction of communication, that is from the application
+// to the terminal.  What the terminal sends back doesn't have to conform to
+// ECMA-48 (and indeed doesn't, as rxvt's 0x24 ($) is out of the range).
+
 static int keyinfo_initialised = 0;
-static struct keyinfo ss3s[64];
-static char ss3_kpalts[64];
+static struct keyinfo ss3s[96];
+static char ss3_kpalts[96];
 
 typedef struct
 {
@@ -17,13 +24,13 @@ termo_csi_t;
 
 typedef termo_result_t (*csi_handler_fn)
 	(termo_t *tk, termo_key_t *key, int cmd, long *arg, int args);
-static csi_handler_fn csi_handlers[64];
+static csi_handler_fn csi_handlers[96];
 
 //
 // Handler for CSI/SS3 cmd keys
 //
 
-static struct keyinfo csi_ss3s[64];
+static struct keyinfo csi_ss3s[96];
 
 static termo_result_t
 handle_csi_ss3_full (termo_t *tk,
@@ -36,10 +43,10 @@ handle_csi_ss3_full (termo_t *tk,
 	else
 		key->modifiers = 0;
 
-	key->type       =   csi_ss3s[cmd - 0x40].type;
-	key->code.sym   =   csi_ss3s[cmd - 0x40].sym;
-	key->modifiers &= ~(csi_ss3s[cmd - 0x40].modifier_mask);
-	key->modifiers |=   csi_ss3s[cmd - 0x40].modifier_set;
+	key->type       =   csi_ss3s[cmd - 0x20].type;
+	key->code.sym   =   csi_ss3s[cmd - 0x20].sym;
+	key->modifiers &= ~(csi_ss3s[cmd - 0x20].modifier_mask);
+	key->modifiers |=   csi_ss3s[cmd - 0x20].modifier_set;
 
 	if (key->code.sym == TERMO_SYM_UNKNOWN)
 		return TERMO_RES_NONE;
@@ -50,15 +57,15 @@ static void
 register_csi_ss3_full (termo_type_t type, termo_sym_t sym,
 	int modifier_set, int modifier_mask, unsigned char cmd)
 {
-	if (cmd < 0x40 || cmd >= 0x80)
+	if (cmd < 0x20 || cmd >= 0x80)
 		return;
 
-	csi_ss3s[cmd - 0x40].type          = type;
-	csi_ss3s[cmd - 0x40].sym           = sym;
-	csi_ss3s[cmd - 0x40].modifier_set  = modifier_set;
-	csi_ss3s[cmd - 0x40].modifier_mask = modifier_mask;
+	csi_ss3s[cmd - 0x20].type          = type;
+	csi_ss3s[cmd - 0x20].sym           = sym;
+	csi_ss3s[cmd - 0x20].modifier_set  = modifier_set;
+	csi_ss3s[cmd - 0x20].modifier_mask = modifier_mask;
 
-	csi_handlers[cmd - 0x40] = &handle_csi_ss3_full;
+	csi_handlers[cmd - 0x20] = &handle_csi_ss3_full;
 }
 
 static void
@@ -106,13 +113,13 @@ static void
 register_ss3 (termo_type_t type, termo_sym_t sym,
 	int modifier_set, unsigned char cmd)
 {
-	if (cmd < 0x40 || cmd >= 0x80)
+	if (cmd < 0x20 || cmd >= 0x80)
 		return;
 
-	ss3s[cmd - 0x40].type          = type;
-	ss3s[cmd - 0x40].sym           = sym;
-	ss3s[cmd - 0x40].modifier_set  = modifier_set;
-	ss3s[cmd - 0x40].modifier_mask = 0;
+	ss3s[cmd - 0x20].type          = type;
+	ss3s[cmd - 0x20].sym           = sym;
+	ss3s[cmd - 0x20].modifier_set  = modifier_set;
+	ss3s[cmd - 0x20].modifier_mask = 0;
 }
 
 //
@@ -123,15 +130,15 @@ static void
 register_ss3kpalt (termo_type_t type, termo_sym_t sym,
 	unsigned char cmd, char kpalt)
 {
-	if (cmd < 0x40 || cmd >= 0x80)
+	if (cmd < 0x20 || cmd >= 0x80)
 		return;
 
-	ss3s[cmd - 0x40].type          = type;
-	ss3s[cmd - 0x40].sym           = sym;
-	ss3s[cmd - 0x40].modifier_set  = 0;
-	ss3s[cmd - 0x40].modifier_mask = 0;
+	ss3s[cmd - 0x20].type          = type;
+	ss3s[cmd - 0x20].sym           = sym;
+	ss3s[cmd - 0x20].modifier_set  = 0;
+	ss3s[cmd - 0x20].modifier_mask = 0;
 
-	ss3_kpalts[cmd - 0x40] = kpalt;
+	ss3_kpalts[cmd - 0x20] = kpalt;
 }
 
 //
@@ -191,7 +198,7 @@ register_csifunc (termo_type_t type, termo_sym_t sym, int number)
 	csifuncs[number].modifier_set  = 0;
 	csifuncs[number].modifier_mask = 0;
 
-	csi_handlers['~' - 0x40] = &handle_csifunc;
+	csi_handlers['~' - 0x20] = &handle_csifunc;
 }
 
 //
@@ -446,7 +453,11 @@ parse_csi (termo_t *tk, size_t introlen, size_t *csi_len,
 	size_t csi_end = introlen;
 	while (csi_end < tk->buffcount)
 	{
-		if (CHARAT (csi_end) >= 0x40 && CHARAT (csi_end) < 0x80)
+		// Specifically allowing the rxvt special character
+		// for shifted function keys to end a CSI-like sequence,
+		// otherwise expecting ECMA-48-like input
+		unsigned char c = CHARAT (csi_end);
+		if ((c >= 0x40 && c < 0x80) || c == '$')
 			break;
 		csi_end++;
 	}
@@ -547,10 +558,10 @@ register_keys (void)
 	register_csi_ss3 (TERMO_TYPE_FUNCTION, 4, 'S');
 
 	// Handle Shift-modified rxvt cursor keys (CSI a, CSI b, CSI c, CSI d)
-	csi_handlers['a' - 0x40] = &handle_csi_cursor;
-	csi_handlers['b' - 0x40] = &handle_csi_cursor;
-	csi_handlers['c' - 0x40] = &handle_csi_cursor;
-	csi_handlers['d' - 0x40] = &handle_csi_cursor;
+	csi_handlers['a' - 0x20] = &handle_csi_cursor;
+	csi_handlers['b' - 0x20] = &handle_csi_cursor;
+	csi_handlers['c' - 0x20] = &handle_csi_cursor;
+	csi_handlers['d' - 0x20] = &handle_csi_cursor;
 
 	// Handle Ctrl-modified rxvt cursor keys (SS3 a, SS3 b, SS3 c, SS3 d)
 	register_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_UP,    TERMO_KEYMOD_CTRL, 'a');
@@ -618,18 +629,18 @@ register_keys (void)
 	register_csifunc (TERMO_TYPE_FUNCTION, 19, 33);
 	register_csifunc (TERMO_TYPE_FUNCTION, 20, 34);
 
-	csi_handlers['u' - 0x40] = &handle_csi_u;
+	csi_handlers['u' - 0x20] = &handle_csi_u;
 
-	csi_handlers['M' - 0x40] = &handle_csi_m;
-	csi_handlers['m' - 0x40] = &handle_csi_m;
+	csi_handlers['M' - 0x20] = &handle_csi_m;
+	csi_handlers['m' - 0x20] = &handle_csi_m;
 
-	csi_handlers['R' - 0x40] = &handle_csi_R;
+	csi_handlers['R' - 0x20] = &handle_csi_R;
 
-	csi_handlers['y' - 0x40] = &handle_csi_y;
+	csi_handlers['y' - 0x20] = &handle_csi_y;
 
-	csi_handlers['^' - 0x40] = &handle_csi_rxvt;
-	csi_handlers['$' - 0x40] = &handle_csi_rxvt;
-	csi_handlers['@' - 0x40] = &handle_csi_rxvt;
+	csi_handlers['^' - 0x20] = &handle_csi_rxvt;
+	csi_handlers['$' - 0x20] = &handle_csi_rxvt;
+	csi_handlers['@' - 0x20] = &handle_csi_rxvt;
 
 	keyinfo_initialised = 1;
 	return 1;
@@ -700,9 +711,9 @@ peekkey_csi (termo_t *tk, termo_csi_t *csi,
 
 	termo_result_t result = TERMO_RES_NONE;
 
-	// We know from the logic above that cmd must be >= 0x40 and < 0x80
-	if (csi_handlers[(cmd & 0xff) - 0x40])
-		result = (*csi_handlers[(cmd & 0xff) - 0x40]) (tk, key, cmd, arg, args);
+	// We know from the logic above that cmd must be >= 0x20 and < 0x80
+	if (csi_handlers[(cmd & 0xff) - 0x20])
+		result = (*csi_handlers[(cmd & 0xff) - 0x20]) (tk, key, cmd, arg, args);
 
 	if (result == TERMO_RES_NONE)
 	{
@@ -761,16 +772,16 @@ peekkey_ss3 (termo_t *tk, termo_csi_t *csi, size_t introlen,
 	if (cmd < 0x40 || cmd >= 0x80)
 		return TERMO_RES_NONE;
 
-	key->type      = csi_ss3s[cmd - 0x40].type;
-	key->code.sym  = csi_ss3s[cmd - 0x40].sym;
-	key->modifiers = csi_ss3s[cmd - 0x40].modifier_set;
+	key->type      = csi_ss3s[cmd - 0x20].type;
+	key->code.sym  = csi_ss3s[cmd - 0x20].sym;
+	key->modifiers = csi_ss3s[cmd - 0x20].modifier_set;
 
 	if (key->code.sym == TERMO_SYM_UNKNOWN)
 	{
-		if (tk->flags & TERMO_FLAG_CONVERTKP && ss3_kpalts[cmd - 0x40])
+		if (tk->flags & TERMO_FLAG_CONVERTKP && ss3_kpalts[cmd - 0x20])
 		{
 			key->type = TERMO_TYPE_KEY;
-			key->code.codepoint = ss3_kpalts[cmd - 0x40];
+			key->code.codepoint = ss3_kpalts[cmd - 0x20];
 			key->modifiers = 0;
 
 			key->multibyte[0] = key->code.codepoint;
@@ -778,9 +789,9 @@ peekkey_ss3 (termo_t *tk, termo_csi_t *csi, size_t introlen,
 		}
 		else
 		{
-			key->type      = ss3s[cmd - 0x40].type;
-			key->code.sym  = ss3s[cmd - 0x40].sym;
-			key->modifiers = ss3s[cmd - 0x40].modifier_set;
+			key->type      = ss3s[cmd - 0x20].type;
+			key->code.sym  = ss3s[cmd - 0x20].sym;
+			key->modifiers = ss3s[cmd - 0x20].modifier_set;
 		}
 	}
 
