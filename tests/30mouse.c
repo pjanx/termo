@@ -29,8 +29,8 @@ main (int argc, char *argv[])
 
 	is_int (ev, TERMO_MOUSE_PRESS, "mouse event for press");
 	is_int (button, 1, "mouse button for press");
-	is_int (line, 1, "mouse line for press");
-	is_int (col, 1, "mouse column for press");
+	is_int (line, 0, "mouse line for press");
+	is_int (col, 0, "mouse column for press");
 	is_int (key.modifiers, 0, "modifiers for press");
 
 	len = termo_strfkey (tk, buffer, sizeof buffer, &key, 0);
@@ -40,7 +40,7 @@ main (int argc, char *argv[])
 	len = termo_strfkey (tk, buffer, sizeof buffer,
 		&key, TERMO_FORMAT_MOUSE_POS);
 	is_int (len, 21, "string length for press");
-	is_str (buffer, "MousePress(1) @ (1,1)", "string buffer for press");
+	is_str (buffer, "MousePress(1) @ (0,0)", "string buffer for press");
 
 	termo_push_bytes (tk, "\e[M@\"!", 6);
 
@@ -52,8 +52,8 @@ main (int argc, char *argv[])
 
 	is_int (ev, TERMO_MOUSE_DRAG, "mouse event for drag");
 	is_int (button, 1, "mouse button for drag");
-	is_int (line, 1, "mouse line for drag");
-	is_int (col, 2, "mouse column for drag");
+	is_int (line, 0, "mouse line for drag");
+	is_int (col, 1, "mouse column for drag");
 	is_int (key.modifiers, 0, "modifiers for press");
 
 	termo_push_bytes (tk, "\e[M##!", 6);
@@ -65,8 +65,8 @@ main (int argc, char *argv[])
 		TERMO_RES_KEY, "interpret_mouse yields RES_KEY");
 
 	is_int (ev, TERMO_MOUSE_RELEASE, "mouse event for release");
-	is_int (line, 1, "mouse line for release");
-	is_int (col, 3, "mouse column for release");
+	is_int (line, 0, "mouse line for release");
+	is_int (col, 2, "mouse column for release");
 	is_int (key.modifiers, 0, "modifiers for press");
 
 	termo_push_bytes (tk, "\e[M0++", 6);
@@ -79,8 +79,8 @@ main (int argc, char *argv[])
 
 	is_int (ev, TERMO_MOUSE_PRESS, "mouse event for Ctrl-press");
 	is_int (button, 1, "mouse button for Ctrl-press");
-	is_int (line, 11, "mouse line for Ctrl-press");
-	is_int (col, 11, "mouse column for Ctrl-press");
+	is_int (line, 10, "mouse line for Ctrl-press");
+	is_int (col, 10, "mouse column for Ctrl-press");
 	is_int (key.modifiers, TERMO_KEYMOD_CTRL, "modifiers for Ctrl-press");
 
 	len = termo_strfkey (tk, buffer, sizeof buffer, &key, 0);
@@ -88,7 +88,7 @@ main (int argc, char *argv[])
 	is_str (buffer, "C-MousePress(1)", "string buffer for Ctrl-press");
 
 	// rxvt protocol
-	termo_push_bytes (tk, "\e[0;20;20M", 10);
+	termo_push_bytes (tk, "\e[32;20;20M", 11);
 
 	key.type = -1;
 	is_int (termo_getkey (tk, &key), TERMO_RES_KEY,
@@ -102,11 +102,11 @@ main (int argc, char *argv[])
 
 	is_int (ev, TERMO_MOUSE_PRESS, "mouse event for press rxvt protocol");
 	is_int (button, 1, "mouse button for press rxvt protocol");
-	is_int (line, 20, "mouse line for press rxvt protocol");
-	is_int (col, 20, "mouse column for press rxvt protocol");
+	is_int (line, 19, "mouse line for press rxvt protocol");
+	is_int (col, 19, "mouse column for press rxvt protocol");
 	is_int (key.modifiers, 0, "modifiers for press rxvt protocol");
 
-	termo_push_bytes (tk, "\e[3;20;20M", 10);
+	termo_push_bytes (tk, "\e[35;20;20M", 11);
 
 	is_int (termo_getkey (tk, &key), TERMO_RES_KEY,
 		"getkey yields RES_KEY for mouse release rxvt protocol");
@@ -119,8 +119,8 @@ main (int argc, char *argv[])
 		TERMO_RES_KEY, "interpret_mouse yields RES_KEY");
 
 	is_int (ev, TERMO_MOUSE_RELEASE, "mouse event for release rxvt protocol");
-	is_int (line, 20, "mouse line for release rxvt protocol");
-	is_int (col, 20, "mouse column for release rxvt protocol");
+	is_int (line, 19, "mouse line for release rxvt protocol");
+	is_int (col, 19, "mouse column for release rxvt protocol");
 	is_int (key.modifiers, 0, "modifiers for release rxvt protocol");
 
 	// SGR protocol
@@ -139,8 +139,8 @@ main (int argc, char *argv[])
 
 	is_int (ev, TERMO_MOUSE_PRESS, "mouse event for press SGR");
 	is_int (button, 1, "mouse button for press SGR");
-	is_int (line, 30, "mouse line for press SGR");
-	is_int (col, 30, "mouse column for press SGR");
+	is_int (line, 29, "mouse line for press SGR");
+	is_int (col, 29, "mouse column for press SGR");
 	is_int (key.modifiers, 0, "modifiers for press SGR");
 
 	termo_push_bytes (tk, "\e[<0;30;30m", 11);
@@ -165,8 +165,8 @@ main (int argc, char *argv[])
 	termo_getkey (tk, &key);
 	termo_interpret_mouse (tk, &key, &ev, &button, &line, &col);
 
-	is_int (line, 300, "mouse line for press SGR wide");
-	is_int (col, 500, "mouse column for press SGR wide");
+	is_int (line, 299, "mouse line for press SGR wide");
+	is_int (col, 499, "mouse column for press SGR wide");
 
 	termo_destroy (tk);
 
