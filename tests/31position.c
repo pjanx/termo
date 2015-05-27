@@ -21,8 +21,8 @@ int main (int argc, char *argv[])
 	is_int (termo_interpret_position (tk, &key, &line, &col), TERMO_RES_KEY,
 		"interpret_position yields RES_KEY");
 
-	is_int (line, 15, "line for position report");
-	is_int (col, 7, "column for position report");
+	is_int (line, 14, "line for position report");
+	is_int (col, 6, "column for position report");
 
 	// A plain CSI R is likely to be <F3> though.  This is tricky :/
 	termo_push_bytes (tk, "\e[R", 3);

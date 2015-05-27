@@ -378,7 +378,7 @@ handle_csi_R (termo_t *tk, termo_key_t *key, int cmd, long *arg, int args)
 			return TERMO_RES_NONE;
 
 		key->type = TERMO_TYPE_POSITION;
-		termo_key_set_linecol (key, arg[1], arg[0]);
+		termo_key_set_linecol (key, arg[0] - 1, arg[1] - 1);
 		return TERMO_RES_KEY;
 
 	default:
