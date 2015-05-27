@@ -456,6 +456,7 @@ parse_csi (termo_t *tk, size_t introlen, size_t *csi_len,
 		// Specifically allowing the rxvt special character
 		// for shifted function keys to end a CSI-like sequence,
 		// otherwise expecting ECMA-48-like input
+		// FIXME: this breaks mode report parsing (e.g. "\e[4;1$y")
 		unsigned char c = CHARAT (csi_end);
 		if ((c >= 0x40 && c < 0x80) || c == '$')
 			break;
