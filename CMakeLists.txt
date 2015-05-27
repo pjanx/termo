@@ -122,16 +122,31 @@ install (FILES ${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config.cmake
 
 # Do some unit tests
 option (BUILD_TESTING "Build tests" OFF)
-# TODO: glob, port the tests to CTest
-set (project_tests)
+# TODO: port the tests to CTest (?)
+set (project_tests
+	01base
+	02getkey
+	03utf8
+	04flags
+	05read
+	06buffer
+	10keyname
+	11strfkey
+	12strpkey
+	13cmpkey
+	20canon
+	30mouse
+	31position
+	32modereport
+	39csi)
 
 if (BUILD_TESTING)
 	enable_testing ()
-	set (test_common_sources t/taplib.c t/taplib.h)
+	set (test_common_sources tests/taplib.c tests/taplib.h)
 
 	foreach (name ${project_tests})
-		add_executable (test-${name} t/${name}.c ${test_common_sources})
-		target_link_libraries (test-${name} ${lib_libraries})
+		add_executable (test-${name} tests/${name}.c ${test_common_sources})
+		target_link_libraries (test-${name} termo-static ${lib_libraries})
 		add_test (test-${name} test-${name})
 	endforeach (name)
 endif (BUILD_TESTING)
