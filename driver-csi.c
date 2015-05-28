@@ -465,7 +465,7 @@ parse_csi (termo_t *tk, size_t introlen, size_t *csi_len,
 		// parsing DECRPM responses (mode reports).  We can work around this
 		// ambiguity by making use of the fact that rxvt key sequences have
 		// exactly one numeric argument and no initial byte.
-		if (c <= '0' || c >= '9')
+		if (c < '0' || c > '9')
 			allow_dollar = false;
 
 		csi_end++;
