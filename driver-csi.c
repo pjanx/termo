@@ -450,16 +450,24 @@ static termo_result_t
 parse_csi (termo_t *tk, size_t introlen, size_t *csi_len,
 	long args[], size_t *nargs, unsigned long *commandp)
 {
+	// Specifically allowing the rxvt special character for shifted function
+	// keys to end a CSI-like sequence, otherwise expecting ECMA-48-like input
+	bool allow_dollar = true;
+
 	size_t csi_end = introlen;
 	while (csi_end < tk->buffcount)
 	{
-		// Specifically allowing the rxvt special character
-		// for shifted function keys to end a CSI-like sequence,
-		// otherwise expecting ECMA-48-like input
-		// FIXME: this breaks mode report parsing (e.g. "\e[4;1$y")
 		unsigned char c = CHARAT (csi_end);
-		if ((c >= 0x40 && c < 0x80) || c == '$')
+		if ((c >= 0x40 && c < 0x80) || (allow_dollar && c == '$'))
 			break;
+
+		// However just accepting the dollar as an end character would break
+		// parsing DECRPM responses (mode reports).  We can work around this
+		// ambiguity by making use of the fact that rxvt key sequences have
+		// exactly one numeric argument and no initial byte.
+		if (c <= '0' || c >= '9')
+			allow_dollar = false;
+
 		csi_end++;
 	}
 
