@@ -75,7 +75,7 @@ register_csi_ss3 (termo_type_t type, termo_sym_t sym, unsigned char cmd)
 }
 
 //
-// Handler for rxvt special cursor key codes
+// Handler for regular cursor key codes
 //
 
 static termo_result_t
@@ -83,25 +83,44 @@ handle_csi_cursor (termo_t *tk,
 	termo_key_t *key, int cmd, long *arg, int args)
 {
 	(void) tk;
+
+	// CSI arrow keys without arguments are usually Ctrl-modified,
+	// and if not, as is the case with urxvt, they're specified in terminfo.
+	// In addition to that, xterm can specify modifiers in an argument.
+	key->type = TERMO_TYPE_KEYSYM;
+	if (args > 1 && arg[1] != -1)
+		key->modifiers = arg[1] - 1;
+	else
+		key->modifiers = TERMO_KEYMOD_CTRL;
+
+	if (cmd == 'A') key->code.sym = TERMO_SYM_UP;
+	if (cmd == 'B') key->code.sym = TERMO_SYM_DOWN;
+	if (cmd == 'C') key->code.sym = TERMO_SYM_RIGHT;
+	if (cmd == 'D') key->code.sym = TERMO_SYM_LEFT;
+	return TERMO_RES_KEY;
+}
+
+//
+// Handler for rxvt special cursor key codes
+//
+
+static termo_result_t
+handle_csi_cursor_rxvt (termo_t *tk,
+	termo_key_t *key, int cmd, long *arg, int args)
+{
+	(void) tk;
 	(void) arg;
 	(void) args;
 
-	key->type      = TERMO_TYPE_KEYSYM;
-	key->modifiers = 0;
+	// CSI with small letter stands for Shift
+	// SS3 with small letter stands for Ctrl but we don't handle that here
+	key->type = TERMO_TYPE_KEYSYM;
+	key->modifiers = TERMO_KEYMOD_SHIFT;
 
 	if (cmd == 'a') key->code.sym = TERMO_SYM_UP;
 	if (cmd == 'b') key->code.sym = TERMO_SYM_DOWN;
 	if (cmd == 'c') key->code.sym = TERMO_SYM_RIGHT;
 	if (cmd == 'd') key->code.sym = TERMO_SYM_LEFT;
-
-	if (key->code.sym == TERMO_SYM_UNKNOWN)
-		return TERMO_RES_NONE;
-
-	// CSI with small letter stands for Shift
-	// SS3 with small letter stands for Ctrl but we don't handle that here
-	if (cmd & 32)
-		key->modifiers |= TERMO_KEYMOD_SHIFT;
-
 	return TERMO_RES_KEY;
 }
 
@@ -568,20 +587,16 @@ register_keys (void)
 	register_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_RIGHT, 0, 'C');
 	register_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_LEFT,  0, 'D');
 
-	register_csi_ss3_full
-		(TERMO_TYPE_KEYSYM, TERMO_SYM_UP,    TERMO_KEYMOD_CTRL, 0, 'A');
-	register_csi_ss3_full
-		(TERMO_TYPE_KEYSYM, TERMO_SYM_DOWN,  TERMO_KEYMOD_CTRL, 0, 'B');
-	register_csi_ss3_full
-		(TERMO_TYPE_KEYSYM, TERMO_SYM_RIGHT, TERMO_KEYMOD_CTRL, 0, 'C');
-	register_csi_ss3_full
-		(TERMO_TYPE_KEYSYM, TERMO_SYM_LEFT,  TERMO_KEYMOD_CTRL, 0, 'D');
+	csi_handlers['A' - 0x20] = &handle_csi_cursor;
+	csi_handlers['B' - 0x20] = &handle_csi_cursor;
+	csi_handlers['C' - 0x20] = &handle_csi_cursor;
+	csi_handlers['D' - 0x20] = &handle_csi_cursor;
 
 	// Handle Shift-modified rxvt cursor keys (CSI a, CSI b, CSI c, CSI d)
-	csi_handlers['a' - 0x20] = &handle_csi_cursor;
-	csi_handlers['b' - 0x20] = &handle_csi_cursor;
-	csi_handlers['c' - 0x20] = &handle_csi_cursor;
-	csi_handlers['d' - 0x20] = &handle_csi_cursor;
+	csi_handlers['a' - 0x20] = &handle_csi_cursor_rxvt;
+	csi_handlers['b' - 0x20] = &handle_csi_cursor_rxvt;
+	csi_handlers['c' - 0x20] = &handle_csi_cursor_rxvt;
+	csi_handlers['d' - 0x20] = &handle_csi_cursor_rxvt;
 
 	// Handle Ctrl-modified rxvt cursor keys (SS3 a, SS3 b, SS3 c, SS3 d)
 	register_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_UP,    TERMO_KEYMOD_CTRL, 'a');
