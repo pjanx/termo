@@ -429,6 +429,7 @@ termo_new (int fd, const char *encoding, int flags)
 	 && termo_start (tk))
 		return tk;
 
+	// FIXME: resource leak on termo_start() failure
 	free (tk);
 	return NULL;
 }
@@ -990,6 +991,9 @@ peekkey_simple (termo_t *tk, termo_key_t *key, int force, size_t *nbytep)
 	}
 	else if (!(tk->flags & TERMO_FLAG_RAW))
 	{
+		// XXX: this way DEL is never recognised as backspace, even if it is
+		//   specified in the terminfo entry key_backspace.  Just because it
+		//   doesn't form an escape sequence.
 		uint32_t codepoint;
 		termo_result_t res = parse_multibyte
 			(tk, tk->buffer + tk->buffstart, tk->buffcount, &codepoint, nbytep);
