@@ -545,7 +545,7 @@ static int
 register_keys (void)
 {
 	int i;
-	for (i = 0; i < 64; i++)
+	for (i = 0; i < 96; i++)
 	{
 		csi_ss3s[i].sym = TERMO_SYM_UNKNOWN;
 		ss3s[i].sym     = TERMO_SYM_UNKNOWN;
