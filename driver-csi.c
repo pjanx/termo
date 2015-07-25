@@ -554,17 +554,28 @@ register_keys (void)
 	for (i = 0; i < NCSIFUNCS; i++)
 		csifuncs[i].sym = TERMO_SYM_UNKNOWN;
 
-	register_csi_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_UP,    'A');
-	register_csi_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_DOWN,  'B');
-	register_csi_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_RIGHT, 'C');
-	register_csi_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_LEFT,  'D');
-	register_csi_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_BEGIN, 'E');
-	register_csi_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_END,   'F');
-	register_csi_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_HOME,  'H');
-	register_csi_ss3 (TERMO_TYPE_FUNCTION, 1, 'P');
-	register_csi_ss3 (TERMO_TYPE_FUNCTION, 2, 'Q');
-	register_csi_ss3 (TERMO_TYPE_FUNCTION, 3, 'R');
-	register_csi_ss3 (TERMO_TYPE_FUNCTION, 4, 'S');
+	// Cursor keys handling; there's some weird, weird stuff going on here:
+	//
+	// rxvt-based terminals should output SS3 A/B/C/D for C-S-arrow keys;
+	// rxvt-unicode however only seems to output Shift codes.
+	//
+	// xterm, PuTTY, tmux output SS3 A/B/C/D for normal arrow keys when
+	// terminfo start string has been written -- it gets eaten by the terminfo
+	// driver then, usually.  To the contrary, CSI A/B/C/D is used for Ctrl.
+
+	register_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_UP,    0, 'A');
+	register_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_DOWN,  0, 'B');
+	register_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_RIGHT, 0, 'C');
+	register_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_LEFT,  0, 'D');
+
+	register_csi_ss3_full
+		(TERMO_TYPE_KEYSYM, TERMO_SYM_UP,    TERMO_KEYMOD_CTRL, 0, 'A');
+	register_csi_ss3_full
+		(TERMO_TYPE_KEYSYM, TERMO_SYM_DOWN,  TERMO_KEYMOD_CTRL, 0, 'B');
+	register_csi_ss3_full
+		(TERMO_TYPE_KEYSYM, TERMO_SYM_RIGHT, TERMO_KEYMOD_CTRL, 0, 'C');
+	register_csi_ss3_full
+		(TERMO_TYPE_KEYSYM, TERMO_SYM_LEFT,  TERMO_KEYMOD_CTRL, 0, 'D');
 
 	// Handle Shift-modified rxvt cursor keys (CSI a, CSI b, CSI c, CSI d)
 	csi_handlers['a' - 0x20] = &handle_csi_cursor;
@@ -578,13 +589,15 @@ register_keys (void)
 	register_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_RIGHT, TERMO_KEYMOD_CTRL, 'c');
 	register_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_LEFT,  TERMO_KEYMOD_CTRL, 'd');
 
-	// Unfortunately Ctrl-Shift-modified rxvt cursor keys get eaten up by
-	// csi_ss3s as unmodified but rxvt-unicode only seems to output Shift codes
-	// for them anyway, so it's not a huge loss.
+	// End of cursor keys handling
 
-	// TODO: change the handling depending on the value of TERM
-	//   - rxvt-based terminals use SS3 A/B/C/D for C-S-arrow keys
-	//   - PuTTY uses SS3 A/B/C/D for something different -> try it out
+	register_csi_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_BEGIN, 'E');
+	register_csi_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_END,   'F');
+	register_csi_ss3 (TERMO_TYPE_KEYSYM, TERMO_SYM_HOME,  'H');
+	register_csi_ss3 (TERMO_TYPE_FUNCTION, 1, 'P');
+	register_csi_ss3 (TERMO_TYPE_FUNCTION, 2, 'Q');
+	register_csi_ss3 (TERMO_TYPE_FUNCTION, 3, 'R');
+	register_csi_ss3 (TERMO_TYPE_FUNCTION, 4, 'S');
 
 	register_csi_ss3_full (TERMO_TYPE_KEYSYM, TERMO_SYM_TAB,
 		TERMO_KEYMOD_SHIFT, TERMO_KEYMOD_SHIFT, 'Z');
@@ -781,27 +794,28 @@ peekkey_ss3 (termo_t *tk, termo_csi_t *csi, size_t introlen,
 	if (cmd < 0x40 || cmd >= 0x80)
 		return TERMO_RES_NONE;
 
-	key->type      = csi_ss3s[cmd - 0x20].type;
-	key->code.sym  = csi_ss3s[cmd - 0x20].sym;
-	key->modifiers = csi_ss3s[cmd - 0x20].modifier_set;
+	// First go have a look at SS3-only sequences
+	key->type      = ss3s[cmd - 0x20].type;
+	key->code.sym  = ss3s[cmd - 0x20].sym;
+	key->modifiers = ss3s[cmd - 0x20].modifier_set;
 
+	// If that fails, try our mixed table (is there a reason for it?)
 	if (key->code.sym == TERMO_SYM_UNKNOWN)
 	{
-		if (tk->flags & TERMO_FLAG_CONVERTKP && ss3_kpalts[cmd - 0x20])
-		{
-			key->type = TERMO_TYPE_KEY;
-			key->code.codepoint = ss3_kpalts[cmd - 0x20];
-			key->modifiers = 0;
+		key->type      = csi_ss3s[cmd - 0x20].type;
+		key->code.sym  = csi_ss3s[cmd - 0x20].sym;
+		key->modifiers = csi_ss3s[cmd - 0x20].modifier_set;
+	}
+	// If we have a match for a keypad key but user wants to receive them
+	// as characters instead, convert them
+	else if ((tk->flags & TERMO_FLAG_CONVERTKP && ss3_kpalts[cmd - 0x20]))
+	{
+		key->type = TERMO_TYPE_KEY;
+		key->code.codepoint = ss3_kpalts[cmd - 0x20];
+		key->modifiers = 0;
 
-			key->multibyte[0] = key->code.codepoint;
-			key->multibyte[1] = 0;
-		}
-		else
-		{
-			key->type      = ss3s[cmd - 0x20].type;
-			key->code.sym  = ss3s[cmd - 0x20].sym;
-			key->modifiers = ss3s[cmd - 0x20].modifier_set;
-		}
+		key->multibyte[0] = key->code.codepoint;
+		key->multibyte[1] = 0;
 	}
 
 	if (key->code.sym == TERMO_SYM_UNKNOWN)
