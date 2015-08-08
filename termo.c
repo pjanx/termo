@@ -37,7 +37,7 @@ static termo_driver_t *drivers[] =
 // Forwards for the "protected" methods
 static void emit_codepoint (termo_t *tk, uint32_t codepoint, termo_key_t *key);
 static termo_result_t peekkey_simple (termo_t *tk,
-	termo_key_t *key, int force, size_t *nbytes);
+	termo_key_t *key, int flags, size_t *nbytes);
 static termo_result_t peekkey_mouse (termo_t *tk,
 	termo_key_t *key, size_t *nbytes);
 
@@ -860,7 +860,7 @@ termo_canonicalise (termo_t *tk, termo_key_t *key)
 }
 
 static termo_result_t
-peekkey (termo_t *tk, termo_key_t *key, int force, size_t *nbytep)
+peekkey (termo_t *tk, termo_key_t *key, int flags, size_t *nbytep)
 {
 	int again = 0;
 
@@ -887,7 +887,7 @@ peekkey (termo_t *tk, termo_key_t *key, int force, size_t *nbytep)
 	termo_driver_node_t *p;
 	for (p = tk->drivers; p; p = p->next)
 	{
-		ret = (p->driver->peekkey) (tk, p->info, key, force, nbytep);
+		ret = (p->driver->peekkey) (tk, p->info, key, flags, nbytep);
 
 #ifdef DEBUG
 		fprintf (stderr, "Driver %s yields %s\n",
@@ -916,7 +916,7 @@ peekkey (termo_t *tk, termo_key_t *key, int force, size_t *nbytep)
 			return ret;
 
 		case TERMO_RES_AGAIN:
-			if (!force)
+			if (!(flags & PEEKKEY_FORCE))
 				again = 1;
 		case TERMO_RES_NONE:
 			break;
@@ -926,7 +926,7 @@ peekkey (termo_t *tk, termo_key_t *key, int force, size_t *nbytep)
 	if (again)
 		return TERMO_RES_AGAIN;
 
-	ret = peekkey_simple (tk, key, force, nbytep);
+	ret = peekkey_simple (tk, key, flags, nbytep);
 
 #ifdef DEBUG
 	fprintf (stderr, "getkey_simple(force=%d) yields %s\n",
@@ -942,7 +942,7 @@ peekkey (termo_t *tk, termo_key_t *key, int force, size_t *nbytep)
 }
 
 static termo_result_t
-peekkey_simple (termo_t *tk, termo_key_t *key, int force, size_t *nbytep)
+peekkey_simple (termo_t *tk, termo_key_t *key, int flags, size_t *nbytep)
 {
 	if (tk->buffcount == 0)
 		return tk->is_closed ? TERMO_RES_EOF : TERMO_RES_NONE;
@@ -950,12 +950,22 @@ peekkey_simple (termo_t *tk, termo_key_t *key, int force, size_t *nbytep)
 	unsigned char b0 = CHARAT (0);
 	if (b0 == 0x1b)
 	{
+		if (flags & PEEKKEY_ALT_PREFIXED)
+		{
+			// We got back here recursively, which means that no driver has
+			// returned TERMO_RES_AGAIN -> just return the Escape.  Otherwise
+			// we would interpret an indefinite number of <Esc>s as Alt+Esc.
+			(*tk->method.emit_codepoint) (tk, b0, key);
+			*nbytep = 1;
+			return TERMO_RES_KEY;
+		}
+
 		// Escape-prefixed value? Might therefore be Alt+key
 		if (tk->buffcount == 1)
 		{
 			// This might be an <Esc> press, or it may want to be part
 			// of a longer sequence
-			if (!force)
+			if (!(flags & PEEKKEY_FORCE))
 				return TERMO_RES_AGAIN;
 
 			(*tk->method.emit_codepoint) (tk, b0, key);
@@ -968,7 +978,8 @@ peekkey_simple (termo_t *tk, termo_key_t *key, int force, size_t *nbytep)
 		tk->buffcount--;
 
 		// Run the full driver
-		termo_result_t metakey_result = peekkey (tk, key, force, nbytep);
+		termo_result_t metakey_result =
+			peekkey (tk, key, flags | PEEKKEY_ALT_PREFIXED, nbytep);
 
 		tk->buffstart--;
 		tk->buffcount++;
@@ -998,7 +1009,7 @@ peekkey_simple (termo_t *tk, termo_key_t *key, int force, size_t *nbytep)
 		termo_result_t res = parse_multibyte
 			(tk, tk->buffer + tk->buffstart, tk->buffcount, &codepoint, nbytep);
 
-		if (res == TERMO_RES_AGAIN && force)
+		if (res == TERMO_RES_AGAIN && (flags & PEEKKEY_FORCE))
 		{
 			// There weren't enough bytes for a complete character but
 			// caller demands an answer.  About the best thing we can do here
@@ -1158,7 +1169,7 @@ termo_getkey (termo_t *tk, termo_key_t *key)
 
 	if (ret == TERMO_RES_AGAIN)
 		// Call peekkey() again in force mode to obtain whatever it can
-		(void) peekkey (tk, key, 1, &nbytes);
+		(void) peekkey (tk, key, PEEKKEY_FORCE, &nbytes);
 		// Don't eat it yet though
 
 	return ret;
@@ -1168,7 +1179,7 @@ termo_result_t
 termo_getkey_force (termo_t *tk, termo_key_t *key)
 {
 	size_t nbytes = 0;
-	termo_result_t ret = peekkey (tk, key, 1, &nbytes);
+	termo_result_t ret = peekkey (tk, key, PEEKKEY_FORCE, &nbytes);
 
 	if (ret == TERMO_RES_KEY)
 		eat_bytes (tk, nbytes);

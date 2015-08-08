@@ -37,6 +37,12 @@ struct termo_driver_node
 	termo_driver_node_t *next;
 };
 
+enum peekey_flags
+{
+	PEEKKEY_FORCE        = 1 << 0,
+	PEEKKEY_ALT_PREFIXED = 1 << 1
+};
+
 struct termo
 {
 	int fd;
@@ -75,7 +81,7 @@ struct termo
 		void (*emit_codepoint) (termo_t *tk,
 			uint32_t codepoint, termo_key_t *key);
 		termo_result_t (*peekkey_simple) (termo_t *tk,
-			termo_key_t *key, int force, size_t *nbytes);
+			termo_key_t *key, int flags, size_t *nbytes);
 		termo_result_t (*peekkey_mouse) (termo_t *tk,
 			termo_key_t *key, size_t *nbytes);
 	}

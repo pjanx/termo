@@ -708,7 +708,7 @@ free_driver (void *info)
 
 static termo_result_t
 peekkey_csi (termo_t *tk, termo_csi_t *csi,
-	size_t introlen, termo_key_t *key, int force, size_t *nbytep)
+	size_t introlen, termo_key_t *key, int flags, size_t *nbytep)
 {
 	(void) csi;
 
@@ -720,7 +720,7 @@ peekkey_csi (termo_t *tk, termo_csi_t *csi,
 	termo_result_t ret = parse_csi (tk, introlen, &csi_len, arg, &args, &cmd);
 	if (ret == TERMO_RES_AGAIN)
 	{
-		if (!force)
+		if (!(flags & PEEKKEY_FORCE))
 			return TERMO_RES_AGAIN;
 
 		(*tk->method.emit_codepoint) (tk, '[', key);
@@ -789,13 +789,13 @@ peekkey_csi (termo_t *tk, termo_csi_t *csi,
 
 static termo_result_t
 peekkey_ss3 (termo_t *tk, termo_csi_t *csi, size_t introlen,
-	termo_key_t *key, int force, size_t *nbytep)
+	termo_key_t *key, int flags, size_t *nbytep)
 {
 	(void) csi;
 
 	if (tk->buffcount < introlen + 1)
 	{
-		if (!force)
+		if (!(flags & PEEKKEY_FORCE))
 			return TERMO_RES_AGAIN;
 
 		(*tk->method.emit_codepoint) (tk, 'O', key);
@@ -847,7 +847,7 @@ peekkey_ss3 (termo_t *tk, termo_csi_t *csi, size_t introlen,
 
 static termo_result_t
 peekkey (termo_t *tk, void *info,
-	termo_key_t *key, int force, size_t *nbytep)
+	termo_key_t *key, int flags, size_t *nbytep)
 {
 	if (tk->buffcount == 0)
 		return tk->is_closed ? TERMO_RES_EOF : TERMO_RES_NONE;
@@ -857,14 +857,16 @@ peekkey (termo_t *tk, void *info,
 	// Now we're sure at least 1 byte is valid
 	unsigned char b0 = CHARAT (0);
 
+	if (b0 == 0x1b && tk->buffcount == 1)
+		return TERMO_RES_AGAIN;
 	if (b0 == 0x1b && tk->buffcount > 1 && CHARAT (1) == '[')
-		return peekkey_csi (tk, csi, 2, key, force, nbytep);
+		return peekkey_csi (tk, csi, 2, key, flags, nbytep);
 	if (b0 == 0x1b && tk->buffcount > 1 && CHARAT (1) == 'O')
-		return peekkey_ss3 (tk, csi, 2, key, force, nbytep);
+		return peekkey_ss3 (tk, csi, 2, key, flags, nbytep);
 	if (b0 == 0x8f)
-		return peekkey_ss3 (tk, csi, 1, key, force, nbytep);
+		return peekkey_ss3 (tk, csi, 1, key, flags, nbytep);
 	if (b0 == 0x9b)
-		return peekkey_csi (tk, csi, 1, key, force, nbytep);
+		return peekkey_csi (tk, csi, 1, key, flags, nbytep);
 	return TERMO_RES_NONE;
 }
 

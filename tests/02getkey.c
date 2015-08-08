@@ -7,7 +7,7 @@ main (int argc, char *argv[])
 	termo_t *tk;
 	termo_key_t key;
 
-	plan_tests (31);
+	plan_tests (38);
 
 	tk = termo_new_abstract ("vt100", NULL, 0);
 
@@ -85,6 +85,27 @@ main (int argc, char *argv[])
 		"key.code.sym after Ctrl-Escape");
 	is_int (key.modifiers, TERMO_KEYMOD_CTRL,
 		"key.modifiers after Ctrl-Escape");
+
+	// Escape key in various amounts
+
+	termo_push_bytes (tk, "\x1b\x1b", 2);
+	is_int (termo_getkey (tk, &key), TERMO_RES_AGAIN,
+		"two Escapes don't yield anything");
+	is_int (termo_get_buffer_remaining (tk), 254,
+		"buffer free 254 after two Escapes");
+
+	termo_push_bytes (tk, "\x1b", 1);
+	is_int (termo_getkey (tk, &key), TERMO_RES_KEY,
+		"three Escapes yield Alt-Escape");
+	is_int (termo_get_buffer_remaining (tk), 255,
+		"buffer free 255 after three Escapes");
+
+	is_int (key.type, TERMO_TYPE_KEYSYM,
+		"key.type after three Escapes");
+	is_int (key.code.sym, TERMO_SYM_ESCAPE,
+		"key.code.sym after three Escapes");
+	is_int (key.modifiers, TERMO_KEYMOD_ALT,
+		"key.modifiers after three Escapes");
 
 	termo_destroy (tk);
 

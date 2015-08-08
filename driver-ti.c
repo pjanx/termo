@@ -466,7 +466,7 @@ free_driver (void *info)
 
 static termo_result_t
 peekkey (termo_t *tk, void *info,
-	termo_key_t *key, int force, size_t *nbytep)
+	termo_key_t *key, int flags, size_t *nbytep)
 {
 	termo_ti_t *ti = info;
 
@@ -512,7 +512,7 @@ peekkey (termo_t *tk, void *info,
 
 	// If p is not NULL then we hadn't walked off the end yet, so we have a
 	// partial match
-	if (p && !force)
+	if (p && !(flags & PEEKKEY_FORCE))
 		return TERMO_RES_AGAIN;
 
 	return TERMO_RES_NONE;
