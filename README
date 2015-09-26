@@ -18,8 +18,8 @@ Build dependencies: cmake >= 2.8.5, pkg-config
 Optional dependencies: Unibilium (alternative for curses), GLib (for the demos)
 
  $ git clone https://github.com/pjanouch/termo.git
- $ mkdir build
- $ cd build
+ $ mkdir termo/build
+ $ cd termo/build
  $ cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug
 
 To install the library, you can do either the usual:
@@ -53,6 +53,12 @@ needed for you to enjoy the benefits of proper terminal input.
 
 The rest is just me going silly over formatting and various unimportant stuff.
 Oh, and I've deleted the manpages.  It needs more Doxygen. :)  TBD
+
+Contributing and Support
+------------------------
+Use this project's GitHub to report any bugs, request features, or submit pull
+requests.  If you want to discuss this project, or maybe just hang out with
+the developer, feel free to join me at irc://anathema.irc.so, channel #anathema.
 
 License
 -------
