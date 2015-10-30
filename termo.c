@@ -1444,7 +1444,7 @@ termo_strfkey (termo_t *tk, char *buffer, size_t len,
 	termo_key_t *key, termo_format_t format)
 {
 	size_t pos = 0;
-	size_t l = 0;
+	int l = 0;
 
 	struct modnames *mods = &modnames[
 		!!(format & TERMO_FORMAT_LONGMOD) +
@@ -1477,7 +1477,7 @@ termo_strfkey (termo_t *tk, char *buffer, size_t len,
 		{
 			l = snprintf (buffer + pos, len - pos,
 				wrapbracket ? "<^%c>" : "^%c", (char) codepoint);
-			if(l <= 0)
+			if (l <= 0)
 				return pos;
 			pos += l;
 			return pos;

@@ -5,6 +5,7 @@ termo
 input.  ncurses does a really terrible job at that, mainly wrt. mouse support
 which seems to be utterly broken.  If you can drag things in a terminal
 application, such as in VIM, I can assure you it's not using ncurses for that.
+(At least not with ncurses older than 6.0.)
 
 Since terminal I/O is really complicated and full of special cases, this project
 doesn't aspire to also replace the output part of ncurses, but is rather
