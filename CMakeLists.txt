@@ -22,11 +22,14 @@ set (project_LIB_NAME "termo-${project_API_VERSION}")
 set (project_INCLUDE_NAME "termo-${project_API_VERSION}")
 set (project_CMAKE_NAME "Termo")
 
+# For custom modules
+set (CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
 # Dependecies
 find_package (Curses)
 find_package (PkgConfig REQUIRED)
+find_package (Ncursesw)
 pkg_check_modules (glib glib-2.0 gio-2.0)
-pkg_check_modules (ncursesw ncursesw)
 pkg_check_modules (unibilium unibilium>=0.1.0)
 
 # Header files with configuration
