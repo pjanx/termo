@@ -1,7 +1,7 @@
 termo
 =====
 
-`termo' is a library providing an alternative to ncurses' handling of terminal
+'termo' is a library providing an alternative to ncurses' handling of terminal
 input.  ncurses does a really terrible job at that, mainly wrt. mouse support
 which seems to be utterly broken.  If you can drag things in a terminal
 application, such as in VIM, I can assure you it's not using ncurses for that.
@@ -61,7 +61,7 @@ Contributing and Support
 ------------------------
 Use this project's GitHub to report any bugs, request features, or submit pull
 requests.  If you want to discuss this project, or maybe just hang out with
-the developer, feel free to join me at irc://anathema.irc.so, channel #anathema.
+the developer, feel free to join me at irc://irc.janouch.name, channel #dev.
 
 License
 -------
