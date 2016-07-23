@@ -48,16 +48,22 @@ set (lib_headers
 	${PROJECT_BINARY_DIR}/termo-config.h)
 
 # Project libraries
+# We need ncurses for one of the demos, so we're always looking
+if (NCURSESW_FOUND)
+	include_directories (${NCURSESW_INCLUDE_DIRS})
+	set (curses_libraries ${NCURSESW_LIBRARIES})
+elseif (CURSES_FOUND)
+	include_directories (${CURSES_INCLUDE_DIR})
+	set (curses_libraries ${CURSES_LIBRARY})
+endif (NCURSESW_FOUND)
+
 if (unibilium_FOUND)
 	include_directories (${unibilium_INCLUDE_DIRS})
 	set (lib_libraries ${unibilium_LIBRARIES})
 	add_definitions (-DHAVE_UNIBILIUM)
-elseif (NCURSESW_FOUND)
+elseif (curses_libraries)
 	include_directories (${NCURSESW_INCLUDE_DIRS})
-	set (lib_libraries ${NCURSESW_LIBRARIES})
-elseif (CURSES_FOUND)
-	include_directories (${CURSES_INCLUDE_DIR})
-	set (lib_libraries ${CURSES_LIBRARY})
+	set (lib_libraries ${curses_libraries})
 else (CURSES_FOUND)
 	message (SEND_ERROR "Unibilium not found, Curses not found")
 endif (unibilium_FOUND)
@@ -90,7 +96,7 @@ add_executable (demo-async EXCLUDE_FROM_ALL demo-async.c)
 target_link_libraries (demo-async termo-static ${lib_libraries})
 
 add_executable (demo-draw EXCLUDE_FROM_ALL demo-draw.c)
-target_link_libraries (demo-draw termo-static ${lib_libraries})
+target_link_libraries (demo-draw termo-static ${lib_libraries} ${curses_libraries})
 
 add_executable (demo EXCLUDE_FROM_ALL demo.c)
 target_link_libraries (demo termo-static ${lib_libraries})

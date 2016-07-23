@@ -227,15 +227,19 @@ load_terminfo (termo_ti_t *ti, const char *term)
 		if (node && !insert_seq (ti, value, node))
 		{
 			free (node);
+			// FIXME: unibi leak
 			return false;
 		}
 	}
 
 	// Clone the behaviour of ncurses for xterm mouse support
+	const char *set_mouse_string = NULL;
 #ifdef HAVE_UNIBILIUM
-	const char *set_mouse_string = unibi_get_str (unibi, "XM");
+	size_t xm = unibi_add_ext_str (unibi, "XM", NULL);
+	if (xm != SIZE_MAX)
+		set_mouse_string = unibi_get_ext_str (unibi, xm);
 #else
-	const char *set_mouse_string = tigetstr ("XM");
+	set_mouse_string = tigetstr ("XM");
 #endif
 	if (!set_mouse_string || set_mouse_string == (char *) -1)
 		ti->set_mouse_string = strdup ("\E[?1000%?%p1%{1}%=%th%el%;");
@@ -257,6 +261,7 @@ load_terminfo (termo_ti_t *ti, const char *term)
 		if (!insert_seq (ti, mouse_report_string, node))
 		{
 			free (node);
+			// FIXME: unibi leak
 			return false;
 		}
 	}
@@ -334,9 +339,9 @@ set_mouse (termo_ti_t *ti, bool enable)
 {
 #ifdef HAVE_UNIBILIUM
 	unibi_var_t params[9] = { enable, 0, 0, 0, 0, 0, 0, 0, 0 };
-	char start_string[unibi_run (ti->set_mouse_string, params, NULL, 0)];
-	unibi_run (ti->set_mouse_string, params,
-		start_string, sizeof start_string);
+	char start_string[unibi_run (ti->set_mouse_string, params, NULL, 0) + 1];
+	start_string[unibi_run (ti->set_mouse_string, params,
+		start_string, sizeof start_string - 1)] = 0;
 #else
 	char *start_string = tparm (ti->set_mouse_string,
 		enable, 0, 0, 0, 0, 0, 0, 0, 0);
