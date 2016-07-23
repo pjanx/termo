@@ -7,7 +7,7 @@ main (int argc, char *argv[])
 	termo_t *tk;
 	termo_key_t key;
 
-	plan_tests (38);
+	plan_tests (42);
 
 	tk = termo_new_abstract ("vt100", NULL, 0);
 
@@ -85,6 +85,15 @@ main (int argc, char *argv[])
 		"key.code.sym after Ctrl-Escape");
 	is_int (key.modifiers, TERMO_KEYMOD_CTRL,
 		"key.modifiers after Ctrl-Escape");
+
+	termo_push_bytes (tk, "\0", 1);
+
+	is_int (termo_getkey (tk, &key), TERMO_RES_KEY,
+		"getkey yields RES_KEY after Ctrl-Space");
+
+	is_int (key.type, TERMO_TYPE_KEY, "key.type after Ctrl-Space");
+	is_int (key.code.codepoint, ' ', "key.code.codepoint after Ctrl-Space");
+	is_int (key.modifiers, TERMO_KEYMOD_CTRL, "key.modifiers after Ctrl-Space");
 
 	// Escape key in various amounts
 

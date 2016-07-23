@@ -778,7 +778,15 @@ parse_multibyte (termo_t *tk, const unsigned char *bytes, size_t len,
 static void
 emit_codepoint (termo_t *tk, uint32_t codepoint, termo_key_t *key)
 {
-	if (codepoint < 0x20)
+	if (codepoint == 0)
+	{
+		// ASCII NUL = Ctrl-Space as well as Ctrl-@ but let's prefer
+		// the former to follow the behaviour of libtermkey
+		key->type = TERMO_TYPE_KEYSYM;
+		key->code.sym = TERMO_SYM_SPACE;
+		key->modifiers = TERMO_KEYMOD_CTRL;
+	}
+	else if (codepoint < 0x20)
 	{
 		// C0 range
 		key->code.codepoint = 0;
