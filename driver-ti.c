@@ -288,7 +288,7 @@ load_terminfo (termo_ti_t *ti, const char *term)
 	// instances for multiple different termtypes, and it's different by the
 	// time we want to use it
 #ifdef HAVE_UNIBILIUM
-	const char *keypad_xmit = unibi_get_str (unibi, unibi_pkey_xmit);
+	const char *keypad_xmit = unibi_get_str (unibi, unibi_keypad_xmit);
 #endif
 
 	if (keypad_xmit)
@@ -297,7 +297,7 @@ load_terminfo (termo_ti_t *ti, const char *term)
 		ti->start_string = NULL;
 
 #ifdef HAVE_UNIBILIUM
-	const char *keypad_local = unibi_get_str (unibi, unibi_pkey_local);
+	const char *keypad_local = unibi_get_str (unibi, unibi_keypad_local);
 #endif
 
 	if (keypad_local)
