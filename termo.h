@@ -299,6 +299,11 @@ size_t termo_strfkey (termo_t *tk, char *buffer, size_t len,
 const char *termo_strpkey (termo_t *tk, const char *str,
 	termo_key_t *key, termo_format_t format);
 
+size_t termo_strfkey_utf8 (termo_t *tk, char *buffer, size_t len,
+	termo_key_t *key, termo_format_t format);
+const char *termo_strpkey_utf8 (termo_t *tk, const char *str,
+	termo_key_t *key, termo_format_t format);
+
 int termo_keycmp (termo_t *tk,
 	const termo_key_t *key1, const termo_key_t *key2);
 

@@ -1048,28 +1048,25 @@ peekkey_simple (termo_t *tk, termo_key_t *key, int flags, size_t *nbytep)
 	}
 }
 
-// XXX: With the current infrastructure I'm not sure how to properly handle
-//   this.  peekkey() isn't made for skipping invalid inputs.
-#define INVALID_1005 0x20
+// REPLACEMENT CHARACTER
+#define UTF8_INVALID 0xFFFD
 
-static termo_result_t
-parse_1005_value (const unsigned char **bytes, size_t *len, uint32_t *cp)
+static size_t
+parse_utf8_fast (const unsigned char *bytes, size_t len, uint32_t *cp)
 {
-	unsigned int nbytes;
-	unsigned char b0 = (*bytes)[0];
+	size_t nbytes;
+	unsigned char b0 = bytes[0];
 	if (b0 < 0x80)
 	{
 		// Single byte ASCII
 		*cp = b0;
-		nbytes = 1;
-		goto end;
+		return 1;
 	}
 	else if (b0 < 0xc0)
 	{
 		// Starts with a continuation byte - that's not right
-		*cp = INVALID_1005;
-		nbytes = 1;
-		goto end;
+		*cp = UTF8_INVALID;
+		return 1;
 	}
 	else if (b0 < 0xe0)
 	{
@@ -1098,28 +1095,39 @@ parse_1005_value (const unsigned char **bytes, size_t *len, uint32_t *cp)
 	}
 	else
 	{
-		*cp = INVALID_1005;
-		nbytes = 1;
-		goto end;
+		*cp = UTF8_INVALID;
+		return 1;
 	}
 
-	for (unsigned int b = 1; b < nbytes; b++)
+	for (size_t b = 1; b < nbytes; b++)
 	{
-		if (b >= *len)
-			return TERMO_RES_AGAIN;
+		if (b >= len)
+			return 0;
 
-		unsigned char cb = (*bytes)[b];
+		unsigned char cb = bytes[b];
 		if (cb < 0x80 || cb >= 0xc0)
 		{
-			*cp = INVALID_1005;
-			nbytes = b;
-			goto end;
+			*cp = UTF8_INVALID;
+			return b;
 		}
 		*cp <<= 6;
 		*cp |= cb & 0x3f;
 	}
+	return nbytes;
+}
 
-end:
+static termo_result_t
+parse_1005_value (const unsigned char **bytes, size_t *len, uint32_t *cp)
+{
+	size_t nbytes = parse_utf8_fast (*bytes, *len, cp);
+	if (nbytes == 0)
+		return TERMO_RES_AGAIN;
+
+	// XXX: With the current infrastructure I'm not sure how to properly handle
+	//   this.  peekkey() isn't made for skipping invalid inputs.
+	if (*cp == UTF8_INVALID)
+		*cp = 0x20;
+
 	(*bytes) += nbytes;
 	(*len) -= nbytes;
 	return TERMO_RES_KEY;
@@ -1430,6 +1438,8 @@ register_c0_full (termo_t *tk, termo_sym_t sym,
 	return sym;
 }
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 static struct modnames
 {
 	const char *shift, *alt, *ctrl;
@@ -1446,9 +1456,11 @@ modnames[] =
 	{ "shift", "meta", "ctrl" }, // LOWERMOD+ALTISMETA+LONGMOD
 };
 
-size_t
-termo_strfkey (termo_t *tk, char *buffer, size_t len,
-	termo_key_t *key, termo_format_t format)
+typedef const char *(*strfkey_emit_fn) (termo_t *, termo_key_t *, char *);
+
+static size_t
+termo_strfkey_generic (termo_t *tk, char *buffer, size_t len,
+	termo_key_t *key, termo_format_t format, strfkey_emit_fn emit)
 {
 	size_t pos = 0;
 	int l = 0;
@@ -1524,10 +1536,11 @@ termo_strfkey (termo_t *tk, char *buffer, size_t len,
 	switch (key->type)
 	{
 	case TERMO_TYPE_KEY:
-		if (!key->multibyte[0]) // In case of user-supplied key structures
-			fill_multibyte (tk, key);
-		l = snprintf (buffer + pos, len - pos, "%s", key->multibyte);
+	{
+		char buf[MB_LEN_MAX + 1];
+		l = snprintf (buffer + pos, len - pos, "%s", emit (tk, key, buf));
 		break;
+	}
 	case TERMO_TYPE_KEYSYM:
 	{
 		const char *name = termo_get_keyname (tk, key->code.sym);
@@ -1596,9 +1609,74 @@ termo_strfkey (termo_t *tk, char *buffer, size_t len,
 	return pos;
 }
 
-const char *
-termo_strpkey (termo_t *tk,
-	const char *str, termo_key_t *key, termo_format_t format)
+static const char *
+strfkey_emit_locale (termo_t *tk, termo_key_t *key, char buf[])
+{
+	(void) buf;
+	if (!key->multibyte[0]) // In case of user-supplied key structures
+		fill_multibyte (tk, key);
+	return key->multibyte;
+}
+
+size_t
+termo_strfkey (termo_t *tk, char *buffer, size_t len,
+	termo_key_t *key, termo_format_t format)
+{
+	return termo_strfkey_generic
+		(tk, buffer, len, key, format, strfkey_emit_locale);
+}
+
+static inline size_t
+utf8_seqlen (uint32_t codepoint)
+{
+	if (codepoint < 0x0000080) return 1;
+	if (codepoint < 0x0000800) return 2;
+	if (codepoint < 0x0010000) return 3;
+	if (codepoint < 0x0200000) return 4;
+	if (codepoint < 0x4000000) return 5;
+	return 6;
+}
+
+static const char *
+strfkey_emit_utf8 (termo_t *tk, termo_key_t *key, char buf[])
+{
+	(void) tk;
+	uint32_t codepoint = key->code.codepoint;
+	int nbytes = utf8_seqlen (codepoint);
+	buf[nbytes] = 0;
+
+	// This is easier done backwards
+	for (int b = nbytes; b-- > 1; codepoint >>= 6)
+		buf[b] = 0x80 | (codepoint & 0x3f);
+
+	switch (nbytes)
+	{
+	case 1: buf[0] =        (codepoint & 0x7f); break;
+	case 2: buf[0] = 0xc0 | (codepoint & 0x1f); break;
+	case 3: buf[0] = 0xe0 | (codepoint & 0x0f); break;
+	case 4: buf[0] = 0xf0 | (codepoint & 0x07); break;
+	case 5: buf[0] = 0xf8 | (codepoint & 0x03); break;
+	case 6: buf[0] = 0xfc | (codepoint & 0x01); break;
+	}
+	return buf;
+}
+
+size_t
+termo_strfkey_utf8 (termo_t *tk, char *buffer, size_t len,
+	termo_key_t *key, termo_format_t format)
+{
+	return termo_strfkey_generic
+		(tk, buffer, len, key, format, strfkey_emit_utf8);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+typedef termo_result_t (*strpkey_parse_fn)
+	(termo_t *, const unsigned char *, size_t, uint32_t *, size_t *);
+
+static const char *
+termo_strpkey_generic (termo_t *tk, const char *str, termo_key_t *key,
+	termo_format_t format, strpkey_parse_fn parse)
 {
 	struct modnames *mods = &modnames[
 		!!(format & TERMO_FORMAT_LONGMOD) +
@@ -1609,8 +1687,8 @@ termo_strpkey (termo_t *tk,
 
 	if ((format & TERMO_FORMAT_CARETCTRL) && str[0] == '^' && str[1])
 	{
-		str = termo_strpkey (tk,
-			str + 1, key, format & ~TERMO_FORMAT_CARETCTRL);
+		str = termo_strpkey_generic (tk,
+			str + 1, key, format & ~TERMO_FORMAT_CARETCTRL, parse);
 
 		if (!str
 		 || key->type != TERMO_TYPE_KEY
@@ -1660,7 +1738,7 @@ termo_strpkey (termo_t *tk,
 		str += snbytes;
 	}
 	// Multibyte must be last
-	else if (parse_multibyte (tk, (unsigned const char *) str, strlen (str),
+	else if (parse (tk, (unsigned const char *) str, strlen (str),
 		&key->code.codepoint, &nbytes) == TERMO_RES_KEY)
 	{
 		key->type = TERMO_TYPE_KEY;
@@ -1674,6 +1752,45 @@ termo_strpkey (termo_t *tk,
 	termo_canonicalise (tk, key);
 	return (char *) str;
 }
+
+const char *
+termo_strpkey (termo_t *tk,
+	const char *str, termo_key_t *key, termo_format_t format)
+{
+	return termo_strpkey_generic (tk, str, key, format, parse_multibyte);
+}
+
+static termo_result_t
+parse_utf8 (termo_t *tk, const unsigned char *bytes, size_t len,
+	uint32_t *cp, size_t *nbytep)
+{
+	(void) tk;
+	size_t nbytes = parse_utf8_fast (bytes, len, cp);
+	if (nbytes == 0)
+		return TERMO_RES_AGAIN;
+
+	// Check for overlong sequences
+	if (nbytes > utf8_seqlen (*cp))
+		*cp = UTF8_INVALID;
+
+	// Check for UTF-16 surrogates or invalid *cps
+	if ((*cp >= 0xD800 && *cp <= 0xDFFF)
+	 || *cp == 0xFFFE
+	 || *cp == 0xFFFF)
+		*cp = UTF8_INVALID;
+
+	*nbytep = nbytes;
+	return TERMO_RES_KEY;
+}
+
+const char *
+termo_strpkey_utf8 (termo_t *tk,
+	const char *str, termo_key_t *key, termo_format_t format)
+{
+	return termo_strpkey_generic (tk, str, key, format, parse_utf8);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 int
 termo_keycmp (termo_t *tk,
