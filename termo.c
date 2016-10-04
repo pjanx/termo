@@ -1130,8 +1130,7 @@ peekkey_mouse (termo_t *tk, termo_key_t *key, size_t *nbytep)
 {
 	uint32_t b, x, y;
 
-	// TODO: Add some API to switch on 1005 mode support
-	if (false)
+	if (tk->mouse_proto == TERMO_MOUSE_PROTO_UTF8)
 	{
 		const unsigned char *buff = tk->buffer + tk->buffstart;
 		size_t len = tk->buffcount;
