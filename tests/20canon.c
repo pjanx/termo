@@ -16,7 +16,7 @@ main (int argc, char *argv[])
 	tk = termo_new_abstract ("vt100", NULL, 0);
 
 	CLEAR_KEY;
-	endp = termo_strpkey (tk, " ", &key, 0);
+	endp = termo_strpkey_utf8 (tk, " ", &key, 0);
 	is_int (key.type, TERMO_TYPE_KEY, "key.type for SP/unicode");
 	is_int (key.code.codepoint, ' ', "key.code.codepoint for SP/unicode");
 	is_int (key.modifiers, 0, "key.modifiers for SP/unicode");
@@ -24,7 +24,7 @@ main (int argc, char *argv[])
 	is_str (endp, "", "consumed entire input for SP/unicode");
 
 	CLEAR_KEY;
-	endp = termo_strpkey (tk, "Space", &key, 0);
+	endp = termo_strpkey_utf8 (tk, "Space", &key, 0);
 	is_int (key.type, TERMO_TYPE_KEY, "key.type for Space/unicode");
 	is_int (key.code.codepoint, ' ', "key.code.codepoint for Space/unicode");
 	is_int (key.modifiers, 0, "key.modifiers for Space/unicode");
@@ -35,7 +35,7 @@ main (int argc, char *argv[])
 		termo_get_canonflags (tk) | TERMO_CANON_SPACESYMBOL);
 
 	CLEAR_KEY;
-	endp = termo_strpkey (tk, " ", &key, 0);
+	endp = termo_strpkey_utf8 (tk, " ", &key, 0);
 	is_int (key.type, TERMO_TYPE_KEYSYM, "key.type for SP/symbol");
 	is_int (key.code.sym, TERMO_SYM_SPACE,
 		"key.code.codepoint for SP/symbol");
@@ -43,7 +43,7 @@ main (int argc, char *argv[])
 	is_str (endp, "", "consumed entire input for SP/symbol");
 
 	CLEAR_KEY;
-	endp = termo_strpkey (tk, "Space", &key, 0);
+	endp = termo_strpkey_utf8 (tk, "Space", &key, 0);
 	is_int (key.type, TERMO_TYPE_KEYSYM, "key.type for Space/symbol");
 	is_int (key.code.sym, TERMO_SYM_SPACE,
 		"key.code.codepoint for Space/symbol");
@@ -51,7 +51,7 @@ main (int argc, char *argv[])
 	is_str (endp, "", "consumed entire input for Space/symbol");
 
 	CLEAR_KEY;
-	endp = termo_strpkey (tk, "DEL", &key, 0);
+	endp = termo_strpkey_utf8 (tk, "DEL", &key, 0);
 	is_int (key.type, TERMO_TYPE_KEYSYM, "key.type for Del/unconverted");
 	is_int (key.code.sym, TERMO_SYM_DEL,
 		"key.code.codepoint for Del/unconverted");
@@ -62,7 +62,7 @@ main (int argc, char *argv[])
 		termo_get_canonflags (tk) | TERMO_CANON_DELBS);
 
 	CLEAR_KEY;
-	endp = termo_strpkey (tk, "DEL", &key, 0);
+	endp = termo_strpkey_utf8 (tk, "DEL", &key, 0);
 	is_int (key.type, TERMO_TYPE_KEYSYM, "key.type for Del/as-backspace");
 	is_int (key.code.sym, TERMO_SYM_BACKSPACE,
 		"key.code.codepoint for Del/as-backspace");

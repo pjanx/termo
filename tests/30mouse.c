@@ -33,11 +33,11 @@ main (int argc, char *argv[])
 	is_int (col, 0, "mouse column for press");
 	is_int (key.modifiers, 0, "modifiers for press");
 
-	len = termo_strfkey (tk, buffer, sizeof buffer, &key, 0);
+	len = termo_strfkey_utf8 (tk, buffer, sizeof buffer, &key, 0);
 	is_int (len, 13, "string length for press");
 	is_str (buffer, "MousePress(1)", "string buffer for press");
 
-	len = termo_strfkey (tk, buffer, sizeof buffer,
+	len = termo_strfkey_utf8 (tk, buffer, sizeof buffer,
 		&key, TERMO_FORMAT_MOUSE_POS);
 	is_int (len, 21, "string length for press");
 	is_str (buffer, "MousePress(1) @ (0,0)", "string buffer for press");
@@ -83,7 +83,7 @@ main (int argc, char *argv[])
 	is_int (col, 10, "mouse column for Ctrl-press");
 	is_int (key.modifiers, TERMO_KEYMOD_CTRL, "modifiers for Ctrl-press");
 
-	len = termo_strfkey (tk, buffer, sizeof buffer, &key, 0);
+	len = termo_strfkey_utf8 (tk, buffer, sizeof buffer, &key, 0);
 	is_int (len, 15, "string length for Ctrl-press");
 	is_str (buffer, "C-MousePress(1)", "string buffer for Ctrl-press");
 
