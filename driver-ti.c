@@ -177,6 +177,7 @@ static bool
 load_terminfo (termo_ti_t *ti, const char *term)
 {
 	const char *mouse_report_string = NULL;
+	bool result = false;
 
 #ifdef HAVE_UNIBILIUM
 	unibi_term *unibi = unibi_from_term (term);
@@ -191,8 +192,12 @@ load_terminfo (termo_ti_t *ti, const char *term)
 	// Have to cast away the const. But it's OK - we know terminfo won't
 	// really modify term
 	int err;
+	TERMINAL *saved_term = set_curterm (NULL);
 	if (setupterm ((char *) term, 1, &err) != OK)
+	{
+		set_curterm (saved_term);
 		return false;
+	}
 
 	for (int i = 0; strfnames[i]; i++)
 	{
@@ -227,8 +232,7 @@ load_terminfo (termo_ti_t *ti, const char *term)
 		if (node && !insert_seq (ti, value, node))
 		{
 			free (node);
-			// FIXME: unibi leak
-			return false;
+			goto fail;
 		}
 	}
 
@@ -255,14 +259,13 @@ load_terminfo (termo_ti_t *ti, const char *term)
 
 		trie_node_t *node = malloc (sizeof *node);
 		if (!node)
-			return false;
+			goto fail;
 
 		node->type = TYPE_MOUSE;
 		if (!insert_seq (ti, mouse_report_string, node))
 		{
 			free (node);
-			// FIXME: unibi leak
-			return false;
+			goto fail;
 		}
 	}
 
@@ -305,11 +308,14 @@ load_terminfo (termo_ti_t *ti, const char *term)
 	else
 		ti->stop_string = NULL;
 
+	result = true;
+fail:
 #ifdef HAVE_UNIBILIUM
 	unibi_destroy (unibi);
+#else
+	del_curterm (set_curterm (saved_term));
 #endif
-
-	return true;
+	return result;
 }
 
 static bool
