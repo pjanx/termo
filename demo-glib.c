@@ -28,7 +28,7 @@ key_timer (gpointer data)
 static gboolean
 stdin_io (GIOChannel *source, GIOCondition condition, gpointer data)
 {
-	if (condition && G_IO_IN)
+	if (condition & G_IO_IN)
 	{
 		if (timeout_id)
 			g_source_remove (timeout_id);
