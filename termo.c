@@ -1013,7 +1013,7 @@ peekkey_simple (termo_t *tk, termo_key_t *key, int flags, size_t *nbytep)
 		// XXX: this way DEL is never recognised as backspace, even if it is
 		//   specified in the terminfo entry key_backspace.  Just because it
 		//   doesn't form an escape sequence.
-		uint32_t codepoint;
+		uint32_t codepoint = MULTIBYTE_INVALID;
 		termo_result_t res = parse_multibyte
 			(tk, tk->buffer + tk->buffstart, tk->buffcount, &codepoint, nbytep);
 
@@ -1023,7 +1023,6 @@ peekkey_simple (termo_t *tk, termo_key_t *key, int flags, size_t *nbytep)
 			// caller demands an answer.  About the best thing we can do here
 			// is eat as many bytes as we have, and emit a MULTIBYTE_INVALID.
 			// If the remaining bytes arrive later, they'll be invalid too.
-			codepoint = MULTIBYTE_INVALID;
 			*nbytep = tk->buffcount;
 			res = TERMO_RES_KEY;
 		}
