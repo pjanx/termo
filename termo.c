@@ -425,12 +425,12 @@ termo_new (int fd, const char *encoding, int flags)
 	termo_set_flags (tk, flags);
 
 	const char *term = getenv ("TERM");
-	if (termo_init (tk, term, encoding)
-	 && termo_start (tk))
+	if (!termo_init (tk, term, encoding))
+		free (tk);
+	else if (!(flags & TERMO_FLAG_NOSTART) && !termo_start (tk))
+		termo_free (tk);
+	else
 		return tk;
-
-	// FIXME: resource leak on termo_start() failure
-	free (tk);
 	return NULL;
 }
 
@@ -445,13 +445,12 @@ termo_new_abstract (const char *term, const char *encoding, int flags)
 	termo_set_flags (tk, flags);
 
 	if (!termo_init (tk, term, encoding))
-	{
 		free (tk);
-		return NULL;
-	}
-
-	termo_start (tk);
-	return tk;
+	else if (!(flags & TERMO_FLAG_NOSTART) && !termo_start (tk))
+		termo_free (tk);
+	else
+		return tk;
+	return NULL;
 }
 
 void

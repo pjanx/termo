@@ -192,7 +192,9 @@ enum
 	// Allow Ctrl-C to be read as normal, disabling SIGINT
 	TERMO_FLAG_CTRLC       = 1 << 6,
 	// Return ERROR on signal (EINTR) rather than retry
-	TERMO_FLAG_EINTR       = 1 << 7
+	TERMO_FLAG_EINTR       = 1 << 7,
+	// Do not call termkey_start() in constructor
+	TERMO_FLAG_NOSTART     = 1 << 8
 };
 
 enum

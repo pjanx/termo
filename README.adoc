@@ -39,7 +39,7 @@ statically linked against the library, and hence they can be run as they are:
 
 What's Different From the Original termkey?
 -------------------------------------------
-The main change is throwing away any UTF-8 dependent code, making the library
+The main change is throwing out any UTF-8 dependent code, making the library
 capable of handling all unibyte and multibyte encodings supported by iconv on
 your system.  The characters are still presented as Unicode in the end, however,
 as the other sensible option is wchar_t and that doesn't really work well, see
