@@ -156,7 +156,7 @@ if (BUILD_TESTING)
 	foreach (name ${project_tests})
 		add_executable (test-${name} tests/${name}.c ${test_common_sources})
 		target_link_libraries (test-${name} termo-static ${lib_libraries})
-		add_test (test-${name} test-${name})
+		add_test (NAME ${PROJECT_NAME}.${name} COMMAND test-${name})
 	endforeach (name)
 endif (BUILD_TESTING)
 
