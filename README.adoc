@@ -18,7 +18,7 @@ Building and Installing
 Build dependencies: cmake >= 2.8.5, pkg-config +
 Optional dependencies: Unibilium (alternative for curses), GLib (for the demos)
 
- $ git clone https://github.com/pjanouch/termo.git
+ $ git clone https://git.janouch.name/p/termo.git
  $ mkdir termo/build
  $ cd termo/build
  $ cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug
@@ -59,11 +59,11 @@ Oh, and I've deleted the manpages.  It needs more Doxygen. :)  TBD
 
 Contributing and Support
 ------------------------
-Use this project's GitHub to report any bugs, request features, or submit pull
-requests.  If you want to discuss this project, or maybe just hang out with
-the developer, feel free to join me at irc://irc.janouch.name, channel #dev.
+Use https://git.janouch.name/p/termo to report any bugs, request features,
+or submit pull requests.  `git send-email` is tolerated.  If you want to discuss
+the project, feel free to join me at ircs://irc.janouch.name, channel #dev.
 
-Bitcoin donations: 12r5uEWEgcHC46xd64tt3hHt9EUvYYDHe9
+Bitcoin donations are accepted at: 12r5uEWEgcHC46xd64tt3hHt9EUvYYDHe9
 
 License
 -------
