@@ -49,20 +49,20 @@ set (lib_headers
 
 # Project libraries
 # We need ncurses for one of the demos, so we're always looking
-if (NCURSESW_FOUND)
-	include_directories (${NCURSESW_INCLUDE_DIRS})
-	set (curses_libraries ${NCURSESW_LIBRARIES})
+if (Ncursesw_FOUND)
+	include_directories (${Ncursesw_INCLUDE_DIRS})
+	set (curses_libraries ${Ncursesw_LIBRARIES})
 elseif (CURSES_FOUND)
 	include_directories (${CURSES_INCLUDE_DIR})
 	set (curses_libraries ${CURSES_LIBRARY})
-endif (NCURSESW_FOUND)
+endif (Ncursesw_FOUND)
 
 if (unibilium_FOUND)
 	include_directories (${unibilium_INCLUDE_DIRS})
 	set (lib_libraries ${unibilium_LIBRARIES})
 	add_definitions (-DHAVE_UNIBILIUM)
 elseif (curses_libraries)
-	include_directories (${NCURSESW_INCLUDE_DIRS})
+	include_directories (${Ncursesw_INCLUDE_DIRS})
 	set (lib_libraries ${curses_libraries})
 else (CURSES_FOUND)
 	message (SEND_ERROR "Unibilium not found, Curses not found")
