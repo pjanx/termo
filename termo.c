@@ -1577,6 +1577,7 @@ termo_strfkey_generic (termo_t *tk, char *buffer, size_t len,
 	}
 	case TERMO_TYPE_FOCUS:
 		l = snprintf (buffer + pos, len - pos, "Focus(%d)", key->code.focused);
+		break;
 	case TERMO_TYPE_POSITION:
 		l = snprintf (buffer + pos, len - pos, "Position");
 		break;
