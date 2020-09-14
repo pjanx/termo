@@ -331,6 +331,33 @@ handle_csi_m (termo_t *tk, termo_key_t *key, int cmd, long *arg, int args)
 	return TERMO_RES_NONE;
 }
 
+//
+// Handler for CSI I / CSI O focus events
+//
+
+static termo_result_t
+handle_csi_IO (termo_t *tk, termo_key_t *key, int cmd, long *arg, int args)
+{
+	(void) tk;
+	(void) arg;
+	(void) args;
+
+	switch (cmd &= 0xff)
+	{
+	case 'I':
+		key->type = TERMO_TYPE_FOCUS;
+		key->code.focused = true;
+		return TERMO_RES_KEY;
+	case 'O':
+		key->type = TERMO_TYPE_FOCUS;
+		key->code.focused = false;
+		return TERMO_RES_KEY;
+	default:
+		return TERMO_RES_NONE;
+	}
+	return TERMO_RES_NONE;
+}
+
 termo_result_t
 termo_interpret_mouse (termo_t *tk, const termo_key_t *key,
 	termo_mouse_event_t *event, int *button, int *line, int *col)
@@ -670,6 +697,9 @@ register_keys (void)
 
 	csi_handlers['M' - 0x20] = &handle_csi_m;
 	csi_handlers['m' - 0x20] = &handle_csi_m;
+
+	csi_handlers['I' - 0x20] = &handle_csi_IO;
+	csi_handlers['O' - 0x20] = &handle_csi_IO;
 
 	csi_handlers['R' - 0x20] = &handle_csi_R;
 

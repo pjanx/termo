@@ -97,6 +97,7 @@ enum termo_type
 	TERMO_TYPE_MOUSE,
 	TERMO_TYPE_POSITION,
 	TERMO_TYPE_MODEREPORT,
+	TERMO_TYPE_FOCUS,
 	// add other recognised types here
 
 	TERMO_TYPE_UNKNOWN_CSI = -1
@@ -159,6 +160,7 @@ struct termo_key
 		uint32_t    codepoint; // TERMO_TYPE_KEY
 		int         number;    // TERMO_TYPE_FUNCTION
 		termo_sym_t sym;       // TERMO_TYPE_KEYSYM
+		int         focused;   // TERMO_TYPE_FOCUS
 
 		// TERMO_TYPE_MODEREPORT
 		// opaque, see termo_interpret_modereport()

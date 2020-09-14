@@ -147,6 +147,7 @@ set (project_tests
 	30mouse
 	31position
 	32modereport
+	33focus
 	39csi)
 
 if (BUILD_TESTING)

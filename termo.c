@@ -156,6 +156,9 @@ print_key (termo_t *tk, termo_key_t *key)
 			ev, button, line, col);
 		break;
 	}
+	case TERMO_TYPE_FOCUS:
+		fprintf (stderr, "%s\n", key->code.focused ? "Focused" : "Defocused");
+		break;
 	case TERMO_TYPE_POSITION:
 	{
 		int line, col;
@@ -1572,6 +1575,8 @@ termo_strfkey_generic (termo_t *tk, char *buffer, size_t len,
 		}
 		break;
 	}
+	case TERMO_TYPE_FOCUS:
+		l = snprintf (buffer + pos, len - pos, "Focus(%d)", key->code.focused);
 	case TERMO_TYPE_POSITION:
 		l = snprintf (buffer + pos, len - pos, "Position");
 		break;
@@ -1826,6 +1831,8 @@ termo_keycmp (termo_t *tk,
 			return cmp;
 		break;
 	}
+	case TERMO_TYPE_FOCUS:
+		return key1.code.focused - key2.code.focused;
 	case TERMO_TYPE_POSITION:
 	{
 		int line1, col1, line2, col2;
