@@ -68,7 +68,7 @@ Bitcoin donations are accepted at: 12r5uEWEgcHC46xd64tt3hHt9EUvYYDHe9
 License
 -------
 'termo' is based on the 'termkey' library, originally written by Paul Evans
-<leonerd@leonerd.org.uk>, with additional changes made by Přemysl Janouch
+<leonerd@leonerd.org.uk>, with additional changes made by Přemysl Eric Janouch
 <p@janouch.name>.
 
 You may use the software under the terms of the MIT license, the text of which
