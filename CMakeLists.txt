@@ -1,5 +1,5 @@
-project (termo C)
-cmake_minimum_required (VERSION 2.8.5)
+cmake_minimum_required (VERSION 3.0)
+project (termo VERSION 0.1.0 LANGUAGES C)
 
 if ("${CMAKE_C_COMPILER_ID}" MATCHES "GNU" OR CMAKE_COMPILER_IS_GNUCC)
 	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
@@ -7,15 +7,7 @@ if ("${CMAKE_C_COMPILER_ID}" MATCHES "GNU" OR CMAKE_COMPILER_IS_GNUCC)
 endif ("${CMAKE_C_COMPILER_ID}" MATCHES "GNU" OR CMAKE_COMPILER_IS_GNUCC)
 
 # Version
-set (project_VERSION_MAJOR 0)
-set (project_VERSION_MINOR 1)
-set (project_VERSION_PATCH 0)
-
-set (project_VERSION ${project_VERSION_MAJOR})
-set (project_VERSION ${project_VERSION}.${project_VERSION_MINOR})
-set (project_VERSION ${project_VERSION}.${project_VERSION_PATCH})
-
-set (project_API_VERSION ${project_VERSION_MAJOR})
+set (project_API_VERSION ${PROJECT_VERSION_MAJOR})
 
 # Names
 set (project_LIB_NAME "termo-${project_API_VERSION}")
@@ -73,14 +65,14 @@ add_library (termo SHARED ${lib_sources} ${lib_headers})
 target_link_libraries (termo ${lib_libraries})
 set_target_properties (termo PROPERTIES
 	OUTPUT_NAME ${project_LIB_NAME}
-	VERSION ${project_VERSION}
+	VERSION ${PROJECT_VERSION}
 	SOVERSION ${project_API_VERSION})
 
 add_library (termo-static STATIC ${lib_sources} ${lib_headers})
 target_link_libraries (termo-static ${lib_libraries})
 set_target_properties (termo-static PROPERTIES
 	OUTPUT_NAME ${project_LIB_NAME}
-	VERSION ${project_VERSION}
+	VERSION ${PROJECT_VERSION}
 	SOVERSION ${project_API_VERSION})
 
 # A fix for: relocation R_X86_64_32 against `a local symbol' can not be
@@ -127,7 +119,7 @@ configure_file (config-version.cmake.in
 
 install (FILES ${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config.cmake 
 	${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake
-	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}-${project_VERSION})
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}-${PROJECT_VERSION})
 
 # Do some unit tests
 option (BUILD_TESTING "Build tests" OFF)
@@ -165,7 +157,7 @@ endif (BUILD_TESTING)
 file (WRITE "${PROJECT_BINARY_DIR}/${PROJECT_NAME}.pc"
 	"Name: ${PROJECT_NAME}\n"
 	"Description: Terminal key input library\n"
-	"Version: ${project_VERSION}\n"
+	"Version: ${PROJECT_VERSION}\n"
 	"Libs: -L${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR} -l${project_LIB_NAME}\n"
 	"Libs.private: ${lib_libraries}\n"
 	"Cflags: -I${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/${project_INCLUDE_NAME}\n")
@@ -177,15 +169,12 @@ set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "Terminal key input library")
 set (CPACK_PACKAGE_VENDOR "Premysl Eric Janouch")
 set (CPACK_PACKAGE_CONTACT "Přemysl Eric Janouch <p@janouch.name>")
 set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-set (CPACK_PACKAGE_VERSION_MAJOR ${project_VERSION_MAJOR})
-set (CPACK_PACKAGE_VERSION_MINOR ${project_VERSION_MINOR})
-set (CPACK_PACKAGE_VERSION_PATCH ${project_VERSION_PATCH})
 set (CPACK_GENERATOR "TGZ;ZIP")
 set (CPACK_PACKAGE_FILE_NAME
-	"${CMAKE_PROJECT_NAME}-${project_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
-set (CPACK_PACKAGE_INSTALL_DIRECTORY "${CMAKE_PROJECT_NAME}-${project_VERSION}")
+	"${CMAKE_PROJECT_NAME}-${PROJECT_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
+set (CPACK_PACKAGE_INSTALL_DIRECTORY "${CMAKE_PROJECT_NAME}-${PROJECT_VERSION}")
 set (CPACK_SOURCE_GENERATOR "TGZ;ZIP")
 set (CPACK_SOURCE_IGNORE_FILES "/\\\\.git;/build;/CMakeLists.txt.user")
-set (CPACK_SOURCE_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${project_VERSION}")
+set (CPACK_SOURCE_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${PROJECT_VERSION}")
 
 include (CPack)

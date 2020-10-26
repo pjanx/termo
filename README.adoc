@@ -15,7 +15,7 @@ The API isn't stable yet.  Tell me what needs to be done so I can fix it first.
 
 Building and Installing
 -----------------------
-Build dependencies: cmake >= 2.8.5, pkg-config +
+Build dependencies: cmake >= 3.0, pkg-config +
 Optional dependencies: Unibilium (alternative for curses), GLib (for the demos)
 
  $ git clone https://git.janouch.name/p/termo.git
