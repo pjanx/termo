@@ -906,21 +906,20 @@ peekkey (termo_t *tk, termo_key_t *key, int flags, size_t *nbytep)
 
 		switch (ret)
 		{
+			size_t halfsize;
 		case TERMO_RES_KEY:
-		{
 #ifdef DEBUG
 			print_key (tk, key); fprintf (stderr, "\n");
 #endif
 			// Slide the data down to stop it running away
-			size_t halfsize = tk->buffsize / 2;
+			halfsize = tk->buffsize / 2;
 			if (tk->buffstart > halfsize)
 			{
 				memcpy (tk->buffer, tk->buffer + halfsize, halfsize);
 				tk->buffstart -= halfsize;
 			}
 
-			// Fallthrough
-		}
+			// Fall-through
 		case TERMO_RES_EOF:
 		case TERMO_RES_ERROR:
 			return ret;
