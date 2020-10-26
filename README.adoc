@@ -2,16 +2,17 @@ termo
 =====
 
 'termo' is a library providing an alternative to ncurses' handling of terminal
-input.  ncurses does a really terrible job at that, mainly wrt. mouse support
-which seems to be utterly broken.  If you can drag things in a terminal
-application, such as in VIM, I can assure you it's not using ncurses for that.
-(At least not with ncurses older than 6.0.)
+input.  ncurses does a terrible job at that, mainly wrt. mouse support which was
+even completely broken for a few years, making it impossible to drag things
+around in applications.  While that one bit has been fixed, it continues to lack
+support for rxvt-unicode's 1015 mode and it's generally incapable of relaying
+certain key combinations.
 
 Since terminal I/O is really complicated and full of special cases, this project
 doesn't aspire to also replace the output part of ncurses, but is rather
 complementary to it.  In the end it makes use of its terminfo library.
 
-The API isn't stable yet.  Tell me what needs to be done so I can fix it first.
+The API can be considered stable.  This project is in maintenance mode.
 
 Building and Installing
 -----------------------
@@ -55,7 +56,7 @@ CMake-based projects and simply import the target.  No package maintainer action
 is needed for you to enjoy the benefits of proper terminal input.
 
 The rest is just me going silly over formatting and various unimportant stuff.
-Oh, and I've deleted the manpages.  It needs more Doxygen. :)  TBD
+Oh, and I've deleted the manpages.
 
 Contributing and Support
 ------------------------
