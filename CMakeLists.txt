@@ -60,6 +60,12 @@ else ()
 	message (SEND_ERROR "Unibilium not found, Curses not found")
 endif ()
 
+# -liconv may or may not be a part of libc
+find_library (iconv_LIBRARIES iconv)
+if (iconv_LIBRARIES)
+	list (APPEND lib_libraries ${iconv_LIBRARIES})
+endif ()
+
 # Create the library targets
 add_library (termo SHARED ${lib_sources} ${lib_headers})
 target_link_libraries (termo ${lib_libraries})
