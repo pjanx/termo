@@ -4,7 +4,7 @@ project (termo VERSION 0.1.0 LANGUAGES C)
 if ("${CMAKE_C_COMPILER_ID}" MATCHES "GNU" OR CMAKE_COMPILER_IS_GNUCC)
 	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 	set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra")
-endif ("${CMAKE_C_COMPILER_ID}" MATCHES "GNU" OR CMAKE_COMPILER_IS_GNUCC)
+endif ()
 
 # Version
 set (project_API_VERSION ${PROJECT_VERSION_MAJOR})
@@ -47,7 +47,7 @@ if (Ncursesw_FOUND)
 elseif (CURSES_FOUND)
 	include_directories (${CURSES_INCLUDE_DIR})
 	set (curses_libraries ${CURSES_LIBRARY})
-endif (Ncursesw_FOUND)
+endif ()
 
 if (unibilium_FOUND)
 	include_directories (${unibilium_INCLUDE_DIRS})
@@ -56,9 +56,9 @@ if (unibilium_FOUND)
 elseif (curses_libraries)
 	include_directories (${Ncursesw_INCLUDE_DIRS})
 	set (lib_libraries ${curses_libraries})
-else (CURSES_FOUND)
+else ()
 	message (SEND_ERROR "Unibilium not found, Curses not found")
-endif (unibilium_FOUND)
+endif ()
 
 # Create the library targets
 add_library (termo SHARED ${lib_sources} ${lib_headers})
@@ -81,7 +81,7 @@ set_target_properties (termo-static PROPERTIES
 # This should enable linking the static library into a shared one.
 if (CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
 	set_target_properties (termo-static PROPERTIES COMPILE_FLAGS "-fPIC")
-endif (CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+endif ()
 
 # Demos
 add_executable (demo-async EXCLUDE_FROM_ALL demo-async.c)
@@ -100,7 +100,7 @@ if (glib_FOUND)
 	target_link_libraries (demo-glib
 		termo-static ${lib_libraries} ${glib_LIBRARIES})
 	list (APPEND demos demo-glib)
-endif (glib_FOUND)
+endif ()
 
 add_custom_target (demos DEPENDS ${demos})
 
@@ -150,8 +150,8 @@ if (BUILD_TESTING)
 		add_executable (test-${name} tests/${name}.c ${test_common_sources})
 		target_link_libraries (test-${name} termo-static ${lib_libraries})
 		add_test (NAME ${PROJECT_NAME}.${name} COMMAND test-${name})
-	endforeach (name)
-endif (BUILD_TESTING)
+	endforeach ()
+endif ()
 
 # pkg-config
 file (WRITE "${PROJECT_BINARY_DIR}/${PROJECT_NAME}.pc"
