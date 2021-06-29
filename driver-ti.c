@@ -272,7 +272,8 @@ load_terminfo (termo_ti_t *ti, const char *term)
 	if (!have_mouse)
 		ti->tk->guessed_mouse_proto = TERMO_MOUSE_PROTO_NONE;
 	else if (strstr (term, "rxvt") == term)
-		// urxvt generally doesn't understand the SGR protocol.
+		// urxvt didn't understand the SGR protocol until version 9.25,
+		// it's safest to keep using 1015.
 		ti->tk->guessed_mouse_proto = TERMO_MOUSE_PROTO_RXVT;
 	else
 		// SGR (1006) is the superior protocol.  If it's not supported by the
