@@ -364,6 +364,8 @@ mouse_reset (termo_ti_t *ti)
 		&& write_string (ti->tk, "\x1b[?1002l")
 		&& write_string (ti->tk, "\x1b[?1003l")
 
+		&& write_string (ti->tk, "\x1b[?1004l")
+
 		&& write_string (ti->tk, "\x1b[?1005l")
 		&& write_string (ti->tk, "\x1b[?1006l")
 		&& write_string (ti->tk, "\x1b[?1015l");
@@ -411,8 +413,12 @@ start_driver (termo_t *tk, void *info)
 	// Disable everything mouse-related first
 	if (!mouse_reset (ti))
 		return false;
+
+	// Enable focus tracking opportunistically and automatically,
+	// as it basically doesn't have any negative consequences at all
 	return mouse_set_proto (ti, tk->mouse_proto, true)
-		&& mouse_set_tracking_mode (ti, tk->mouse_tracking, true);
+		&& mouse_set_tracking_mode (ti, tk->mouse_tracking, true)
+		&& write_string (ti->tk, "\x1b[?1004h");
 }
 
 static int
