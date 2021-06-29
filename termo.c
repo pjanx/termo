@@ -1695,9 +1695,9 @@ termo_strpkey_generic (termo_t *tk, const char *str, termo_key_t *key,
 
 		if (!str
 		 || key->type != TERMO_TYPE_KEY
- 		 || key->code.codepoint < '@'
+		 || key->code.codepoint < '@'
 		 || key->code.codepoint > '_'
- 		 || key->modifiers != 0)
+		 || key->modifiers != 0)
 			return NULL;
 
 		if (key->code.codepoint >= 'A'
