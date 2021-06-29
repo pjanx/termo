@@ -432,7 +432,8 @@ stop_driver (termo_t *tk, void *info)
 	if (tk->mouse_proto == TERMO_MOUSE_PROTO_NONE)
 		return true;
 	return mouse_set_proto (ti, tk->mouse_proto, false)
-		&& mouse_set_tracking_mode (ti, tk->mouse_tracking, false);
+		&& mouse_set_tracking_mode (ti, tk->mouse_tracking, false)
+		&& write_string (ti->tk, "\x1b[?1004l");
 }
 
 static void *
