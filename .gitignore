@@ -7,3 +7,5 @@
 /termo.files
 /termo.creator*
 /termo.includes
+/termo.cflags
+/termo.cxxflags
