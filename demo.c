@@ -10,7 +10,7 @@
 #include "termo.h"
 
 int
-main(int argc, char *argv[])
+main (int argc, char *argv[])
 {
 	TERMO_CHECK_VERSION;
 	setlocale (LC_CTYPE, "");

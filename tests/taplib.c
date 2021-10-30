@@ -73,7 +73,7 @@ is_str (const char *got, const char *expect, char *name)
 }
 
 int
-exit_status(void)
+exit_status (void)
 {
 	return g_exit_status;
 }

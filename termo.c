@@ -1856,4 +1856,3 @@ termo_keycmp (termo_t *tk,
 	}
 	return key1.modifiers - key2.modifiers;
 }
-
