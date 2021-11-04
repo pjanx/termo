@@ -250,26 +250,24 @@ load_terminfo (termo_ti_t *ti, const char *term)
 	else
 		ti->set_mouse_string = strdup (set_mouse_string);
 
-	bool have_mouse = false;
-	if (!mouse_report_string && strstr (term, "xterm"))
-		mouse_report_string = "\x1b[M";
+	// We handle 1006 and 1015 unconditionally in driver-csi.c,
+	// and don't want to have the handling diverted by recent terminfo;
+	// let's hardcode the ancient 1000 sequence locally
 	if (mouse_report_string)
 	{
-		have_mouse = true;
-
 		trie_node_t *node = malloc (sizeof *node);
 		if (!node)
 			goto fail;
 
 		node->type = TYPE_MOUSE;
-		if (!insert_seq (ti, mouse_report_string, node))
+		if (!insert_seq (ti, "\x1b[M", node))
 		{
 			free (node);
 			goto fail;
 		}
 	}
 
-	if (!have_mouse)
+	if (!mouse_report_string && strstr (term, "xterm") != term)
 		ti->tk->guessed_mouse_proto = TERMO_MOUSE_PROTO_NONE;
 	else if (strstr (term, "rxvt") == term)
 		// urxvt didn't understand the SGR protocol until version 9.25,
