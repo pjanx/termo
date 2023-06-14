@@ -246,7 +246,7 @@ load_terminfo (termo_ti_t *ti, const char *term)
 	set_mouse_string = tigetstr ("XM");
 #endif
 	if (!set_mouse_string || set_mouse_string == (char *) -1)
-		ti->set_mouse_string = strdup ("\E[?1000%?%p1%{1}%=%th%el%;");
+		ti->set_mouse_string = strdup ("\x1b[?1000%?%p1%{1}%=%th%el%;");
 	else
 		ti->set_mouse_string = strdup (set_mouse_string);
 
