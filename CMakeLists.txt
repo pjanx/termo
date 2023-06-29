@@ -164,9 +164,9 @@ file (WRITE "${PROJECT_BINARY_DIR}/${PROJECT_NAME}.pc"
 	"Name: ${PROJECT_NAME}\n"
 	"Description: Terminal key input library\n"
 	"Version: ${PROJECT_VERSION}\n"
-	"Libs: -L${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR} -l${project_LIB_NAME}\n"
+	"Libs: -L${CMAKE_INSTALL_FULL_LIBDIR} -l${project_LIB_NAME}\n"
 	"Libs.private: ${lib_libraries}\n"
-	"Cflags: -I${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/${project_INCLUDE_NAME}\n")
+	"Cflags: -I${CMAKE_INSTALL_FULL_INCLUDEDIR}/${project_INCLUDE_NAME}\n")
 install (FILES "${PROJECT_BINARY_DIR}/${PROJECT_NAME}.pc"
 	DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 
