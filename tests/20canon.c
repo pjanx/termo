@@ -4,6 +4,9 @@
 int
 main (int argc, char *argv[])
 {
+	(void) argc;
+	(void) argv;
+
 	termo_t *tk;
 	termo_key_t key;
 	const char *endp;

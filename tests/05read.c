@@ -9,6 +9,9 @@
 int
 main (int argc, char *argv[])
 {
+	(void) argc;
+	(void) argv;
+
 	int fd[2];
 	termo_t *tk;
 	termo_key_t key;
