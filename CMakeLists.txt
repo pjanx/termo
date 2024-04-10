@@ -61,6 +61,8 @@ else ()
 endif ()
 
 # -liconv may or may not be a part of libc
+find_path (iconv_INCLUDE_DIRS iconv.h)
+include_directories (${iconv_INCLUDE_DIRS})
 find_library (iconv_LIBRARIES iconv)
 if (iconv_LIBRARIES)
 	list (APPEND lib_libraries ${iconv_LIBRARIES})
